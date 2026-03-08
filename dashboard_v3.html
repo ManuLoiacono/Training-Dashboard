@@ -1,0 +1,1904 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MANUEL — Training Dashboard</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0a0a;
+      --surface: #111111;
+      --surface2: #181818;
+      --border: #222222;
+      --accent: #c8f135;
+      --accent2: #35f1c8;
+      --accent3: #f13580;
+      --text: #e8e8e8;
+      --muted: #555;
+      --muted2: #333;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* HEADER */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 28px 40px;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      background: rgba(10, 10, 10, 0.95);
+      backdrop-filter: blur(12px);
+      z-index: 100;
+    }
+
+    .logo {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 28px;
+      letter-spacing: 4px;
+      color: var(--accent);
+    }
+
+    .logo span {
+      color: var(--text);
+      opacity: 0.4;
+    }
+
+    .header-meta {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+      text-align: right;
+      line-height: 1.8;
+    }
+
+    .live-dot {
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      background: var(--accent);
+      border-radius: 50%;
+      margin-right: 6px;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.3;
+      }
+    }
+
+    /* NAV TABS */
+    nav {
+      display: flex;
+      gap: 0;
+      padding: 0 40px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+    }
+
+    .tab-btn {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      padding: 16px 24px;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+    }
+
+    .tab-btn:hover {
+      color: var(--text);
+    }
+
+    .tab-btn.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+
+    /* MAIN LAYOUT */
+    main {
+      padding: 32px 40px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .tab-panel {
+      display: none;
+    }
+
+    .tab-panel.active {
+      display: block;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* SECTION TITLE */
+    .section-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 42px;
+      letter-spacing: 3px;
+      margin-bottom: 6px;
+      line-height: 1;
+    }
+
+    .section-subtitle {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 1px;
+      margin-bottom: 32px;
+    }
+
+    /* STATS ROW */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--accent);
+    }
+
+    .stat-card.blue::before {
+      background: var(--accent2);
+    }
+
+    .stat-card.pink::before {
+      background: var(--accent3);
+    }
+
+    .stat-card.orange::before {
+      background: #f18535;
+    }
+
+    .stat-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 2px;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .stat-value {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 36px;
+      letter-spacing: 1px;
+      line-height: 1;
+      color: var(--text);
+    }
+
+    .stat-unit {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .stat-delta {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      margin-top: 8px;
+    }
+
+    .stat-delta.up {
+      color: var(--accent);
+    }
+
+    .stat-delta.down {
+      color: var(--accent3);
+    }
+
+    /* GRID LAYOUTS */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .grid-2-1 {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    /* CHART CARDS */
+    .chart-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 24px;
+    }
+
+    .chart-title {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 2px;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .chart-title-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      flex-shrink: 0;
+    }
+
+    .chart-title-dot.blue {
+      background: var(--accent2);
+    }
+
+    .chart-title-dot.pink {
+      background: var(--accent3);
+    }
+
+    .chart-title-dot.orange {
+      background: #f18535;
+    }
+
+    .chart-wrapper {
+      position: relative;
+      height: 200px;
+    }
+
+    .chart-wrapper.tall {
+      height: 280px;
+    }
+
+    /* EXERCISE TABLE */
+    .exercise-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+    }
+
+    .exercise-table th {
+      text-align: left;
+      color: var(--muted);
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      padding: 0 12px 12px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .exercise-table td {
+      padding: 12px;
+      border-bottom: 1px solid var(--muted2);
+      color: var(--text);
+      vertical-align: middle;
+    }
+
+    .exercise-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .exercise-table tr:hover td {
+      background: var(--surface2);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      font-size: 10px;
+      letter-spacing: 1px;
+      border: 1px solid;
+    }
+
+    .badge-green {
+      color: var(--accent);
+      border-color: var(--accent);
+      background: rgba(200, 241, 53, 0.05);
+    }
+
+    .badge-blue {
+      color: var(--accent2);
+      border-color: var(--accent2);
+      background: rgba(53, 241, 200, 0.05);
+    }
+
+    .badge-gray {
+      color: var(--muted);
+      border-color: var(--muted2);
+    }
+
+    /* PR TICKER */
+    .pr-bar {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      padding: 12px 20px;
+      display: flex;
+      gap: 32px;
+      overflow: hidden;
+      margin-bottom: 28px;
+      align-items: center;
+    }
+
+    .pr-label {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 14px;
+      letter-spacing: 3px;
+      color: var(--accent);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .pr-items {
+      display: flex;
+      gap: 32px;
+      overflow: hidden;
+    }
+
+    .pr-item {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .pr-item strong {
+      color: var(--text);
+    }
+
+    /* BODY COMPOSITION */
+    .body-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .body-stat {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 20px;
+      text-align: center;
+    }
+
+    .body-stat-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 2px;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .body-stat-value {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 32px;
+    }
+
+    .body-stat-sub {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    /* WEEK SELECTOR */
+    .week-selector {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+
+    .week-btn {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 1px;
+      padding: 8px 16px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .week-btn:hover {
+      border-color: var(--muted);
+      color: var(--text);
+    }
+
+    .week-btn.active {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(200, 241, 53, 0.05);
+    }
+
+    /* VOLUME BAR MINI */
+    .vol-bar-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .vol-bar {
+      height: 4px;
+      background: var(--muted2);
+      flex: 1;
+      border-radius: 0;
+      position: relative;
+    }
+
+    .vol-bar-fill {
+      height: 100%;
+      background: var(--accent);
+      transition: width 0.6s ease;
+    }
+
+    .vol-bar-fill.blue {
+      background: var(--accent2);
+    }
+
+    /* RUNNING METRICS */
+    .run-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .run-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--muted2);
+    }
+
+    .run-row:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .run-date {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      color: var(--muted);
+    }
+
+    .run-dist {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 20px;
+      color: var(--accent2);
+    }
+
+    .run-pace {
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      color: var(--text);
+    }
+
+    .run-hr {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    /* RESPONSIVE */
+    @media (max-width: 900px) {
+      header {
+        padding: 20px;
+      }
+
+      main {
+        padding: 20px;
+      }
+
+      nav {
+        padding: 0 20px;
+        overflow-x: auto;
+      }
+
+      .grid-2,
+      .grid-2-1,
+      .grid-3,
+      .body-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .stats-row {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    /* SCROLLBAR */
+    ::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--bg);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--muted2);
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <div class="logo">MANU<span>///</span>LOGS</div>
+    <div class="header-meta">
+      <div><span class="live-dot"></span>PROTOTYPE v0.1</div>
+      <div>SEPTIEMBRE 2025 — DATOS REALES</div>
+      <div>MANUEL LOIACONO · 22 AÑOS · 77.5 KG</div>
+    </div>
+  </header>
+
+  <nav>
+    <button class="tab-btn active" onclick="switchTab('overview')">OVERVIEW</button>
+    <button class="tab-btn" onclick="switchTab('gym')">GIMNASIO</button>
+    <button class="tab-btn" onclick="switchTab('running')">RUNNING</button>
+    <button class="tab-btn" onclick="switchTab('body')">COMPOSICIÓN</button>
+  </nav>
+
+  <main>
+
+    <!-- =================== OVERVIEW =================== -->
+    <div class="tab-panel active" id="tab-overview">
+      <div class="section-title">OVERVIEW</div>
+      <div class="section-subtitle">SEPTIEMBRE 2025 · SEMANA A SEMANA</div>
+
+      <div class="pr-bar">
+        <div class="pr-label">PRs ↗</div>
+        <div class="pr-items">
+          <div class="pr-item">PRESS BANCA <strong>70kg × 7</strong></div>
+          <div class="pr-item">REMO BARRA <strong>85kg × 7</strong></div>
+          <div class="pr-item">SQ/PRENSA <strong>80kg × 6</strong></div>
+          <div class="pr-item">RDL <strong>75kg × 6</strong></div>
+          <div class="pr-item">DOMINADAS <strong>+0kg × 10</strong></div>
+        </div>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-label">Semanas registradas</div>
+          <div class="stat-value">3</div>
+          <div class="stat-unit">SEP 2025</div>
+        </div>
+        <div class="stat-card blue">
+          <div class="stat-label">Ejercicios trackeados</div>
+          <div class="stat-value">14</div>
+          <div class="stat-unit">ÚNICOS</div>
+        </div>
+        <div class="stat-card pink">
+          <div class="stat-label">Días de entreno</div>
+          <div class="stat-value">3</div>
+          <div class="stat-unit">POR SEMANA</div>
+        </div>
+        <div class="stat-card orange">
+          <div class="stat-label">Peso corporal</div>
+          <div class="stat-value">77.5</div>
+          <div class="stat-unit">KG · FEB 2026</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Masa muscular</div>
+          <div class="stat-value">38.9</div>
+          <div class="stat-unit">KG · 50.1%</div>
+        </div>
+        <div class="stat-card blue">
+          <div class="stat-label">Masa adiposa</div>
+          <div class="stat-value">17.8</div>
+          <div class="stat-unit">KG · 23%</div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="chart-card">
+          <div class="chart-title">
+            <span class="chart-title-dot"></span>
+            VOLUMEN ESTIMADO POR SEMANA — GIMNASIO
+          </div>
+          <div class="chart-wrapper">
+            <canvas id="overviewVolChart"></canvas>
+          </div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">
+            <span class="chart-title-dot pink"></span>
+            COMPOSICIÓN CORPORAL · FEB 2026
+          </div>
+          <div class="chart-wrapper">
+            <canvas id="bodyPieChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-title">
+          <span class="chart-title-dot blue"></span>
+          PROGRESIÓN DE PESOS CLAVE — SEMANA A SEMANA
+        </div>
+        <div class="chart-wrapper tall">
+          <canvas id="overviewProgressChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- =================== GIMNASIO =================== -->
+    <div class="tab-panel" id="tab-gym">
+      <div class="section-title">GIMNASIO</div>
+      <div class="section-subtitle">SEPTIEMBRE 2025 · 3 DÍAS / SEMANA · FUERZA + HIPERTROFIA</div>
+
+      <div class="week-selector">
+        <button class="week-btn active" onclick="selectWeek(this, 0)">SEMANA 1</button>
+        <button class="week-btn" onclick="selectWeek(this, 1)">SEMANA 2</button>
+        <button class="week-btn" onclick="selectWeek(this, 2)">SEMANA 3</button>
+      </div>
+
+      <div class="grid-2-1">
+        <div class="chart-card">
+          <div class="chart-title">
+            <span class="chart-title-dot"></span>
+            VOLUMEN POR EJERCICIO (series × reps × kg estimado)
+          </div>
+          <div class="chart-wrapper tall">
+            <canvas id="gymVolumeChart"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-title">
+            <span class="chart-title-dot blue"></span>
+            DISTRIBUCIÓN POR DÍA
+          </div>
+          <div class="chart-wrapper tall">
+            <canvas id="gymDayChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="chart-card" style="margin-bottom: 16px;">
+        <div class="chart-title">
+          <span class="chart-title-dot orange"></span>
+          EJERCICIOS COMPUESTOS — PROGRESIÓN DE PESO (kg)
+        </div>
+        <div class="chart-wrapper tall">
+          <canvas id="gymCompoundChart"></canvas>
+        </div>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-title">
+          <span class="chart-title-dot"></span>
+          DETALLE SEMANAL — TODOS LOS EJERCICIOS
+        </div>
+        <div id="exerciseTableContainer">
+          <!-- filled by JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- =================== RUNNING =================== -->
+    <div class="tab-panel" id="tab-running">
+      <div class="section-title">RUNNING</div>
+      <div class="section-subtitle">CORRÉ python garmin_setup.py PARA CONECTAR TUS DATOS</div>
+
+      <div class="stats-row">
+        <div class="stat-card blue">
+          <div class="stat-label">Distancia total mes</div>
+          <div class="stat-value">47.2</div>
+          <div class="stat-unit">KM · EJEMPLO</div>
+          <div class="stat-delta up">↑ +8.4km vs mes ant.</div>
+        </div>
+        <div class="stat-card blue">
+          <div class="stat-label">Pace promedio</div>
+          <div class="stat-value">5:24</div>
+          <div class="stat-unit">MIN/KM</div>
+          <div class="stat-delta up">↓ -0:12 mejora</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">FC promedio</div>
+          <div class="stat-value">158</div>
+          <div class="stat-unit">BPM</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Runs este mes</div>
+          <div class="stat-value">8</div>
+          <div class="stat-unit">ACTIVIDADES</div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="chart-card">
+          <div class="chart-title">
+            <span class="chart-title-dot blue"></span>
+            DISTANCIA SEMANAL (KM)
+          </div>
+          <div class="chart-wrapper">
+            <canvas id="runDistChart"></canvas>
+          </div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">
+            <span class="chart-title-dot"></span>
+            PACE PROMEDIO (MIN/KM)
+          </div>
+          <div class="chart-wrapper">
+            <canvas id="runPaceChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="chart-card">
+          <div class="chart-title">
+            <span class="chart-title-dot pink"></span>
+            FRECUENCIA CARDÍACA PROMEDIO
+          </div>
+          <div class="chart-wrapper">
+            <canvas id="runHRChart"></canvas>
+          </div>
+        </div>
+        <div class="run-card">
+          <div class="chart-title" style="margin-bottom: 4px;">
+            <span class="chart-title-dot blue"></span>
+            ÚLTIMAS ACTIVIDADES (EJEMPLO)
+          </div>
+          <div class="run-row">
+            <div>
+              <div class="run-date">01 SEP 2025</div>
+              <div class="run-pace">Pace 5:22 · FC 156</div>
+            </div>
+            <div class="run-dist">8.2 KM</div>
+            <div class="run-hr">42:18 min</div>
+          </div>
+          <div class="run-row">
+            <div>
+              <div class="run-date">04 SEP 2025</div>
+              <div class="run-pace">Pace 5:10 · FC 162</div>
+            </div>
+            <div class="run-dist">5.0 KM</div>
+            <div class="run-hr">25:50 min</div>
+          </div>
+          <div class="run-row">
+            <div>
+              <div class="run-date">08 SEP 2025</div>
+              <div class="run-pace">Pace 5:35 · FC 154</div>
+            </div>
+            <div class="run-dist">10.1 KM</div>
+            <div class="run-hr">56:14 min</div>
+          </div>
+          <div class="run-row">
+            <div>
+              <div class="run-date">13 SEP 2025</div>
+              <div class="run-pace">Pace 5:18 · FC 159</div>
+            </div>
+            <div class="run-dist">7.5 KM</div>
+            <div class="run-hr">39:45 min</div>
+          </div>
+          <div class="run-row">
+            <div>
+              <div class="run-date">17 SEP 2025</div>
+              <div class="run-pace">Pace 5:05 · FC 165</div>
+            </div>
+            <div class="run-dist">6.0 KM</div>
+            <div class="run-hr">30:30 min</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="garmin-notice-card" class="chart-card"
+        style="margin-top: 16px; border-color: var(--accent2); background: rgba(53,241,200,0.02);">
+        <div class="chart-title" style="margin-bottom: 8px;">
+          <span class="chart-title-dot blue"></span>
+          PRÓXIMO PASO — INTEGRACIÓN GARMIN
+        </div>
+        <p style="font-family: 'DM Mono', monospace; font-size: 12px; color: var(--muted); line-height: 1.7;">
+          La Garmin Connect API ya está integrada. Para activarla, corré
+          <code style="color: var(--accent2);">python garmin_setup.py</code> una vez con tus credenciales de Garmin
+          Connect. Después, cada vez que inicies <code style="color: var(--accent2);">server.py</code>, los datos de
+          running se cargan automáticamente desde tu cuenta.
+        </p>
+      </div>
+    </div>
+
+    <!-- =================== COMPOSICIÓN =================== -->
+    <div class="tab-panel" id="tab-body">
+      <div class="section-title">COMPOSICIÓN CORPORAL</div>
+      <div class="section-subtitle">INFORME ISAK · LIC. GABRIELA DOMINGUEZ · 13/02/2026</div>
+
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-label">Peso total</div>
+          <div class="stat-value">77.5</div>
+          <div class="stat-unit">KG</div>
+        </div>
+        <div class="stat-card blue">
+          <div class="stat-label">Masa muscular</div>
+          <div class="stat-value">38.93</div>
+          <div class="stat-unit">KG · 50.2%</div>
+          <div class="stat-delta up">Score-Z: +2.74</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Masa adiposa</div>
+          <div class="stat-value">17.83</div>
+          <div class="stat-unit">KG · 23.0%</div>
+          <div class="stat-delta up">Score-Z: -1.30 (bajo)</div>
+        </div>
+        <div class="stat-card orange">
+          <div class="stat-label">Masa ósea</div>
+          <div class="stat-value">8.78</div>
+          <div class="stat-unit">KG · 11.5%</div>
+        </div>
+        <div class="stat-card pink">
+          <div class="stat-label">Metab. basal</div>
+          <div class="stat-value">1755</div>
+          <div class="stat-unit">KCAL / DÍA</div>
+        </div>
+        <div class="stat-card pink">
+          <div class="stat-label">Gasto total est.</div>
+          <div class="stat-value">2809</div>
+          <div class="stat-unit">KCAL / DÍA</div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="chart-card">
+          <div class="chart-title">
+            <span class="chart-title-dot pink"></span>
+            5 MASAS CORPORALES (KG) · D. KERR 1988
+          </div>
+          <div class="chart-wrapper">
+            <canvas id="massBarChart"></canvas>
+          </div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">
+            <span class="chart-title-dot"></span>
+            DISTRIBUCIÓN % COMPOSICIÓN
+          </div>
+          <div class="chart-wrapper">
+            <canvas id="bodyPieChart2"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="chart-card">
+          <div class="chart-title">
+            <span class="chart-title-dot blue"></span>
+            PERÍMETROS CLAVE (cm) · SCORE-Z
+          </div>
+          <div class="chart-wrapper tall">
+            <canvas id="perimeterChart"></canvas>
+          </div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">
+            <span class="chart-title-dot orange"></span>
+            PLIEGUES CUTÁNEOS (mm) · SCORE-Z
+          </div>
+          <div class="chart-wrapper tall">
+            <canvas id="plieguesChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="chart-card" style="margin-top: 0; border-color: #333; background: rgba(200,241,53,0.02);">
+        <div class="chart-title" style="margin-bottom: 8px;">
+          <span class="chart-title-dot"></span>
+          PRÓXIMAS MEDICIONES
+        </div>
+        <p style="font-family: 'DM Mono', monospace; font-size: 12px; color: var(--muted); line-height: 1.7;">
+          Esta sección muestra tu única medición disponible (13/02/2026). A medida que hagas más evaluaciones con la
+          nutricionista, aparecerá un gráfico de evolución temporal de masa muscular, masa adiposa y peso. El objetivo
+          es poder ver la tendencia mes a mes.
+        </p>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    // ===== API DATA LOADING =====
+    // Intenta cargar datos del servidor local (server.py).
+    // Si falla (dashboard abierto sin servidor), usa datos de ejemplo.
+
+    let API_DATA = null;
+
+    async function loadAPIData() {
+      try {
+        const res = await fetch("http://localhost:5000/api/all", { signal: AbortSignal.timeout(8000) });
+        if (!res.ok) throw new Error("Server error");
+        const json = await res.json();
+        if (json.ok) {
+          API_DATA = {
+            gimnasio: Array.isArray(json.data.gimnasio) ? json.data.gimnasio : [],
+            running: Array.isArray(json.data.running) ? json.data.running : [],
+            antropometria: Array.isArray(json.data.antropometria) ? json.data.antropometria : [],
+          };
+          const hasGym = API_DATA.gimnasio.length > 0;
+          const hasRun = API_DATA.running.length > 0;
+          const hasAntro = API_DATA.antropometria.length > 0;
+          const anyData = hasGym || hasRun || hasAntro;
+          const src = json.sources || {};
+          showConnectionBadge(anyData, json.updated_at, {
+            gym: hasGym ? (src.gimnasio || 'sheets') : false,
+            run: hasRun ? (src.running || 'sheets') : false,
+            antro: hasAntro ? (src.antropometria || 'sheets') : false,
+          });
+          return anyData;
+        }
+      } catch (e) {
+        // servidor no disponible — modo offline con datos de ejemplo
+      }
+      showConnectionBadge(false, null, {});
+      return false;
+    }
+
+    function showConnectionBadge(connected, updatedAt, sources) {
+      const meta = document.querySelector('.header-meta');
+      const existing = meta.querySelector('.connection-badge');
+      if (existing) existing.remove();
+      const badge = document.createElement('div');
+      badge.className = 'connection-badge';
+      if (connected) {
+        const d = new Date(updatedAt);
+        function dot(src, label) {
+          if (!src) return '<span style="color:var(--muted)">○</span> ' + label;
+          const srcTag = src === 'garmin' ? ' <span style="color:var(--accent2);font-size:9px">[G]</span>'
+                       : src === 'pdf' ? ' <span style="color:var(--accent2);font-size:9px">[PDF]</span>'
+                       : '';
+          return '<span style="color:var(--accent)">●</span> ' + label + srcTag;
+        }
+        badge.innerHTML = dot(sources.gym, 'GYM') + " &nbsp;" + dot(sources.run, 'RUN') + " &nbsp;" + dot(sources.antro, 'ANTRO') + " &nbsp;· " + d.toLocaleTimeString('es-AR');
+      } else {
+        badge.innerHTML = '<span style="color:var(--muted)">○ MODO OFFLINE</span> · datos de ejemplo';
+      }
+      badge.style.cssText = "font-family:'DM Mono',monospace;font-size:10px;margin-top:4px;letter-spacing:1px;";
+      meta.appendChild(badge);
+    }
+
+    // Procesa datos reales del API de gimnasio
+    function processGymData(rows) {
+      if (!rows || rows.length === 0) return null;
+
+      const processed = {};
+      const weeks = new Set();
+
+      rows.forEach(row => {
+        const fecha = row.fecha;
+        const ejercicio = row.ejercicio?.toUpperCase();
+        const grupo = row.grupo_muscular || 'OTRO';
+        const dia = parseInt(row.dia) || 1;
+        const serie = parseInt(row.serie) || 1;
+        const reps = parseInt(row.reps) || 0;
+        const peso = parseFloat(row.peso_kg) || 0;
+
+        if (!fecha || !ejercicio) return;
+
+        // Semana ISO
+        const d = new Date(fecha);
+        const weekStart = new Date(d);
+        weekStart.setDate(d.getDate() - d.getDay() + 1);
+        const weekKey = weekStart.toISOString().split('T')[0];
+        weeks.add(weekKey);
+
+        if (!processed[weekKey]) processed[weekKey] = {};
+        if (!processed[weekKey][ejercicio]) {
+          processed[weekKey][ejercicio] = { day: dia, group: grupo, series: [], totalVol: 0 };
+        }
+        processed[weekKey][ejercicio].series.push({ serie, reps, peso });
+        processed[weekKey][ejercicio].totalVol += reps * peso;
+      });
+
+      return {
+        weeks: [...weeks].sort(),
+        byWeek: processed
+      };
+    }
+
+    // Procesa datos de running del API
+    function processRunningData(rows) {
+      if (!rows || rows.length === 0) return null;
+      return rows.map(r => ({
+        fecha: r.fecha,
+        distancia: parseFloat(r.distancia_km) || 0,
+        tiempo: parseFloat(r.tiempo_min) || 0,
+        pace: parseFloat(r.pace_min_km) || 0,
+        fc_prom: parseInt(r.fc_prom) || 0,
+        fc_max: parseInt(r.fc_max) || 0,
+        desnivel: parseFloat(r.desnivel_m) || 0,
+        notas: r.notas || ''
+      })).sort((a, b) => a.fecha.localeCompare(b.fecha));
+    }
+
+    // Procesa datos antropométricos del API
+    function processAntroData(rows) {
+      if (!rows || rows.length === 0) return null;
+      return rows.map(r => ({
+        fecha: r.fecha,
+        peso: parseFloat(r.peso_kg) || 0,
+        muscular: parseFloat(r.masa_muscular_kg) || 0,
+        adiposa: parseFloat(r.masa_adiposa_kg) || 0,
+        osea: parseFloat(r.masa_osea_kg) || 0,
+        residual: parseFloat(r.masa_residual_kg) || 0,
+        piel: parseFloat(r.masa_piel_kg) || 0,
+        cintura: parseFloat(r.cintura_cm) || 0,
+        brazo_rel: parseFloat(r.brazo_relajado_cm) || 0,
+        brazo_flex: parseFloat(r.brazo_flex_cm) || 0,
+        metabolismo: parseFloat(r.metabolismo_basal) || 0,
+        gasto: parseFloat(r.gasto_total) || 0,
+      })).sort((a, b) => a.fecha.localeCompare(b.fecha));
+    }
+
+    // ===== CHART DEFAULTS =====
+    Chart.defaults.color = '#555';
+    Chart.defaults.font.family = "'DM Mono', monospace";
+    Chart.defaults.font.size = 10;
+
+    const ACCENT = '#c8f135';
+    const ACCENT2 = '#35f1c8';
+    const ACCENT3 = '#f13580';
+    const ORANGE = '#f18535';
+    const SURFACE = '#181818';
+    const BORDER = '#222';
+    const MUTED = '#444';
+
+    function gridConfig() {
+      return {
+        color: BORDER,
+        drawBorder: false,
+      };
+    }
+
+    // ===== DATA FROM REAL SEPTEMBER SHEET =====
+    // Parsed from Manuel's P_SEP_2025.xlsx
+    // Format: exercise -> [week1, week2, week3] -> parsed sets data
+
+    const gymData = {
+      weeks: ['SEMANA 1', 'SEMANA 2', 'SEMANA 3'],
+      exercises: {
+        // Día 1
+        'VUELOS LAT. (D1)': { day: 1, group: 'HOMBRO', weights: [10, 10, 10], reps: [[11, 11, 11], [12, 12, 11], [10, 10, 10]] },
+        'PRESS BANCA': { day: 1, group: 'PECHO', weights: [70, 70, 68], reps: [[7, 6, 5], [6, 6, 5], [8, 5, 5]] },
+        'DOMINADAS': { day: 1, group: 'ESPALDA', weights: [0, 0, 0], reps: [[10, 7, 6], [9, 8, 6], [9, 5, 5]] },
+        'FONDOS': { day: 1, group: 'TRICEP', weights: [10, 10, 10], reps: [[14, 12, 10], [14, 9, 8], [8, 9, 9]] },
+        'CURL INCLINADO': { day: 1, group: 'BICEP', weights: [12, 12, 16], reps: [[10, 8, 6], [11, 6, 8], [16, 16, 16]] },
+        'SKULL MANCUERNA': { day: 1, group: 'TRICEP', weights: [10, 10, 0], reps: [[10, 8, 6], [12, 9, 6], [0, 0, 0]] },
+        // Día 2
+        'VUELOS LAT. (D2)': { day: 2, group: 'HOMBRO', weights: [10, 10, 10], reps: [[12, 12, 11], [11, 11, 11], [0, 0, 0]] },
+        'SQ / PRENSA 45': { day: 2, group: 'PIERNA', weights: [70, 78, 0], reps: [[6, 6, 6, 6], [6, 5, 6, 6], [0, 0, 0]] },
+        'RDL': { day: 2, group: 'PIERNA', weights: [70, 75, 0], reps: [[7, 7, 7, 7], [6, 6, 6, 6], [0, 0, 0]] },
+        'APERTURAS': { day: 2, group: 'PECHO', weights: [41, 41, 0], reps: [[12, 9, 7], [12, 11, 10], [0, 0, 0]] },
+        'DORSALERA': { day: 2, group: 'ESPALDA', weights: [54, 54, 0], reps: [[9, 8, 6], [10, 8, 7], [0, 0, 0]] },
+        // Día 3
+        'VUELOS LAT. (D3)': { day: 3, group: 'HOMBRO', weights: [10, 10, 10], reps: [[11, 11, 11], [12, 10, 10], [0, 0, 0]] },
+        'REMO BARRA': { day: 3, group: 'ESPALDA', weights: [80, 85, 83], reps: [[8, 8, 8], [6, 6, 7], [9, 7, 7]] },
+        'PRESS BANCA INC.': { day: 3, group: 'PECHO', weights: [25, 26, 26], reps: [[9, 9, 7], [8, 8, 6], [9, 8, 7]] },
+        'REMO HORI. UNI.': { day: 3, group: 'ESPALDA', weights: [32, 32, 32], reps: [[11, 10, 9], [9, 9, 9], [11, 9, 8]] },
+        'TRICEP POLEA': { day: 3, group: 'TRICEP', weights: [26, 0, 10], reps: [[10, 10, 10], [0, 0, 0], [13, 9, 7]] },
+        'BICEP': { day: 3, group: 'BICEP', weights: [12, 0, 23], reps: [[9, 9, 9], [0, 0, 0], [8, 7, 5]] },
+      }
+    };
+
+    // Calculate volume = sum(reps) * weight for each week
+    function calcVolume(exercise, weekIdx) {
+      const d = gymData.exercises[exercise];
+      if (!d) return 0;
+      const reps = d.reps[weekIdx];
+      const w = d.weights[weekIdx];
+      return reps.reduce((a, b) => a + b, 0) * w;
+    }
+
+    // ===== TAB SWITCHING =====
+    function switchTab(name) {
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('tab-' + name).classList.add('active');
+      event.target.classList.add('active');
+    }
+
+    // ===== WEEK SELECTOR =====
+    let activeWeek = 0;
+    function selectWeek(btn, idx) {
+      activeWeek = idx;
+      document.querySelectorAll('.week-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      updateGymWeekCharts();
+      renderExerciseTable();
+    }
+
+    // ===== CHARTS =====
+    let charts = {};
+
+    function destroyChart(id) {
+      if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+    }
+
+    // --- OVERVIEW: Volume bar ---
+    function buildOverviewVolChart() {
+      const exNames = Object.keys(gymData.exercises);
+      const weekVols = gymData.weeks.map((_, wi) => {
+        return exNames.reduce((sum, ex) => sum + calcVolume(ex, wi), 0);
+      });
+
+      charts.overviewVol = new Chart(document.getElementById('overviewVolChart'), {
+        type: 'bar',
+        data: {
+          labels: gymData.weeks,
+          datasets: [{
+            label: 'Volumen total (reps × kg)',
+            data: weekVols,
+            backgroundColor: [ACCENT + '88', ACCENT + 'cc', ACCENT],
+            borderWidth: 0,
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: gridConfig(), ticks: { color: MUTED } },
+            y: { grid: gridConfig(), ticks: { color: MUTED } }
+          }
+        }
+      });
+    }
+
+    // --- OVERVIEW: Body pie ---
+    function buildBodyPieChart(canvasId, massData) {
+      const ctx = document.getElementById(canvasId);
+      if (!ctx) return;
+      const data = massData || [38.93, 17.83, 8.78, 8.26, 3.71];
+      charts[canvasId] = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Muscular', 'Adiposa', 'Ósea', 'Residual', 'Piel'],
+          datasets: [{
+            data: data,
+            backgroundColor: [ACCENT2, ACCENT3, ACCENT, ORANGE, MUTED],
+            borderWidth: 0,
+            hoverOffset: 6,
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          cutout: '65%',
+          plugins: {
+            legend: {
+              position: 'right',
+              labels: { color: '#666', font: { size: 10 }, boxWidth: 10, padding: 10 }
+            }
+          }
+        }
+      });
+    }
+
+    // --- OVERVIEW: Progress chart ---
+    function buildOverviewProgressChart() {
+      charts.overviewProgress = new Chart(document.getElementById('overviewProgressChart'), {
+        type: 'line',
+        data: {
+          labels: ['S1', 'S2', 'S3'],
+          datasets: [
+            {
+              label: 'Press Banca (kg)',
+              data: [70, 70, 68],
+              borderColor: ACCENT,
+              backgroundColor: ACCENT + '15',
+              tension: 0.3, pointRadius: 5, borderWidth: 2,
+            },
+            {
+              label: 'Remo Barra (kg)',
+              data: [80, 85, 83],
+              borderColor: ACCENT2,
+              backgroundColor: ACCENT2 + '15',
+              tension: 0.3, pointRadius: 5, borderWidth: 2,
+            },
+            {
+              label: 'SQ/Prensa 45 (kg)',
+              data: [70, 78, null],
+              borderColor: ORANGE,
+              backgroundColor: ORANGE + '15',
+              tension: 0.3, pointRadius: 5, borderWidth: 2,
+              spanGaps: false,
+            },
+            {
+              label: 'RDL (kg)',
+              data: [70, 75, null],
+              borderColor: ACCENT3,
+              backgroundColor: ACCENT3 + '15',
+              tension: 0.3, pointRadius: 5, borderWidth: 2,
+              spanGaps: false,
+            },
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              labels: { color: '#888', font: { size: 10 }, boxWidth: 12 }
+            }
+          },
+          scales: {
+            x: { grid: gridConfig(), ticks: { color: MUTED } },
+            y: { grid: gridConfig(), ticks: { color: MUTED } }
+          }
+        }
+      });
+    }
+
+    // --- GYM: Volume per exercise (week) ---
+    let gymVolumeChart, gymDayChart;
+
+    function updateGymWeekCharts() {
+      const wi = activeWeek;
+      const exNames = Object.keys(gymData.exercises);
+      const vols = exNames.map(ex => calcVolume(ex, wi));
+
+      // Filter out 0-volume exercises
+      const filtered = exNames.map((ex, i) => ({ ex, vol: vols[i] })).filter(d => d.vol > 0);
+      const labels = filtered.map(d => d.ex);
+      const data = filtered.map(d => d.vol);
+
+      destroyChart('gymVolume');
+      charts.gymVolume = new Chart(document.getElementById('gymVolumeChart'), {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Volumen (reps × kg)',
+            data,
+            backgroundColor: data.map((_, i) => i % 2 === 0 ? ACCENT + 'cc' : ACCENT + '66'),
+            borderWidth: 0,
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: gridConfig(), ticks: { color: MUTED } },
+            y: { grid: { display: false }, ticks: { color: '#888', font: { size: 10 } } }
+          }
+        }
+      });
+
+      // Day distribution
+      const dayVols = [1, 2, 3].map(d => {
+        return Object.entries(gymData.exercises)
+          .filter(([, v]) => v.day === d)
+          .reduce((sum, [ex]) => sum + calcVolume(ex, wi), 0);
+      });
+
+      destroyChart('gymDay');
+      charts.gymDay = new Chart(document.getElementById('gymDayChart'), {
+        type: 'doughnut',
+        data: {
+          labels: ['DÍA 1', 'DÍA 2', 'DÍA 3'],
+          datasets: [{
+            data: dayVols,
+            backgroundColor: [ACCENT, ACCENT2, ORANGE],
+            borderWidth: 0,
+            hoverOffset: 6,
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          cutout: '55%',
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { color: '#888', font: { size: 10 }, boxWidth: 10, padding: 12 }
+            }
+          }
+        }
+      });
+    }
+
+    // --- GYM: Compound lifts progression ---
+    function buildGymCompoundChart() {
+      charts.gymCompound = new Chart(document.getElementById('gymCompoundChart'), {
+        type: 'line',
+        data: {
+          labels: ['S1', 'S2', 'S3'],
+          datasets: [
+            {
+              label: 'Press Banca',
+              data: [70, 70, 68],
+              borderColor: ACCENT, backgroundColor: ACCENT + '15',
+              tension: 0.3, pointRadius: 5, borderWidth: 2,
+            },
+            {
+              label: 'Remo Barra',
+              data: [80, 85, 83],
+              borderColor: ACCENT2, backgroundColor: ACCENT2 + '15',
+              tension: 0.3, pointRadius: 5, borderWidth: 2,
+            },
+            {
+              label: 'Press Banca Inc.',
+              data: [25, 26, 26],
+              borderColor: ORANGE, backgroundColor: ORANGE + '15',
+              tension: 0.3, pointRadius: 5, borderWidth: 2,
+            },
+            {
+              label: 'SQ/Prensa',
+              data: [70, 78, null],
+              borderColor: ACCENT3, backgroundColor: ACCENT3 + '15',
+              tension: 0.3, pointRadius: 5, borderWidth: 2, spanGaps: false,
+            },
+            {
+              label: 'RDL',
+              data: [70, 75, null],
+              borderColor: '#ff9f40', backgroundColor: '#ff9f4015',
+              tension: 0.3, pointRadius: 5, borderWidth: 2, spanGaps: false,
+            },
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { labels: { color: '#888', font: { size: 10 }, boxWidth: 12 } }
+          },
+          scales: {
+            x: { grid: gridConfig(), ticks: { color: MUTED } },
+            y: { grid: gridConfig(), ticks: { color: MUTED }, title: { display: true, text: 'kg', color: MUTED } }
+          }
+        }
+      });
+    }
+
+    // --- EXERCISE TABLE ---
+    function renderExerciseTable() {
+      const wi = activeWeek;
+      const rows = Object.entries(gymData.exercises).map(([name, d]) => {
+        const vol = calcVolume(name, wi);
+        const reps = d.reps[wi];
+        const w = d.weights[wi];
+        const totalReps = reps.reduce((a, b) => a + b, 0);
+        const sets = reps.filter(r => r > 0).length;
+        return { name, day: d.day, group: d.group, weight: w, sets, totalReps, vol };
+      }).filter(r => r.vol > 0).sort((a, b) => a.day - b.day);
+
+      const groupColors = {
+        'PECHO': ACCENT, 'ESPALDA': ACCENT2, 'PIERNA': ORANGE,
+        'HOMBRO': '#a78bfa', 'BICEP': ACCENT3, 'TRICEP': '#facc15'
+      };
+
+      const html = `
+    <table class="exercise-table">
+      <thead>
+        <tr>
+          <th>EJERCICIO</th>
+          <th>DÍA</th>
+          <th>GRUPO</th>
+          <th>PESO (kg)</th>
+          <th>SERIES</th>
+          <th>REPS TOT.</th>
+          <th>VOLUMEN</th>
+          <th>ESTADO</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows.map(r => `
+          <tr>
+            <td>${r.name}</td>
+            <td style="color: var(--muted)">${r.day}</td>
+            <td>
+              <span style="color: ${groupColors[r.group] || '#888'}; font-size: 10px; letter-spacing: 1px;">
+                ${r.group}
+              </span>
+            </td>
+            <td style="font-family: 'Bebas Neue'; font-size: 18px; color: var(--accent)">${r.weight}</td>
+            <td>${r.sets}</td>
+            <td>${r.totalReps}</td>
+            <td style="color: var(--text)">${r.vol.toLocaleString()}</td>
+            <td>
+              <span class="badge ${r.vol > 600 ? 'badge-green' : 'badge-blue'}">
+                ${r.vol > 600 ? '↑ ALTO' : '→ NORM'}
+              </span>
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+      document.getElementById('exerciseTableContainer').innerHTML = html;
+    }
+
+    // --- RUNNING CHARTS ---
+    function buildRunningCharts(runData) {
+      let labels, distances, paces, hrs;
+
+      if (runData && runData.length > 0) {
+        // Agrupar actividades por semana ISO
+        const weekMap = {};
+        runData.forEach(r => {
+          const d = new Date(r.fecha);
+          const ws = new Date(d);
+          ws.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+          const key = ws.toISOString().split('T')[0];
+          if (!weekMap[key]) weekMap[key] = { dist: 0, paces: [], hrs: [] };
+          weekMap[key].dist += r.distancia;
+          if (r.pace > 0) weekMap[key].paces.push(r.pace);
+          if (r.fc_prom > 0) weekMap[key].hrs.push(r.fc_prom);
+        });
+        const weeks = Object.keys(weekMap).sort();
+        const MESES = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
+        labels = weeks.map(w => {
+          const d = new Date(w);
+          return `S${Math.ceil(d.getDate() / 7)} ${MESES[d.getMonth()]}`;
+        });
+        distances = weeks.map(w => Math.round(weekMap[w].dist * 10) / 10);
+        paces = weeks.map(w => {
+          const p = weekMap[w].paces;
+          return p.length ? Math.round(p.reduce((a, b) => a + b) / p.length * 100) / 100 : 0;
+        });
+        hrs = weeks.map(w => {
+          const h = weekMap[w].hrs;
+          return h.length ? Math.round(h.reduce((a, b) => a + b) / h.length) : 0;
+        });
+      } else {
+        labels = ['S1 AGO', 'S2 AGO', 'S3 AGO', 'S4 AGO', 'S1 SEP', 'S2 SEP', 'S3 SEP', 'S4 SEP'];
+        distances = [12.5, 15.0, 8.2, 14.0, 13.5, 11.2, 16.5, 6.0];
+        paces = [5.55, 5.48, 5.60, 5.42, 5.38, 5.30, 5.25, 5.15];
+        hrs = [163, 160, 165, 158, 159, 156, 157, 154];
+      }
+
+      // Distance
+      charts.runDist = new Chart(document.getElementById('runDistChart'), {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'km',
+            data: distances,
+            backgroundColor: ACCENT2 + '99',
+            borderWidth: 0,
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: gridConfig(), ticks: { color: MUTED } },
+            y: { grid: gridConfig(), ticks: { color: MUTED } }
+          }
+        }
+      });
+
+      // Pace (lower = better)
+      const paceMin = Math.floor(Math.min(...paces.filter(p => p > 0)) * 10) / 10 - 0.3;
+      const paceMax = Math.ceil(Math.max(...paces) * 10) / 10 + 0.3;
+      charts.runPace = new Chart(document.getElementById('runPaceChart'), {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'min/km',
+            data: paces,
+            borderColor: ACCENT,
+            backgroundColor: ACCENT + '15',
+            tension: 0.4, pointRadius: 4, borderWidth: 2,
+            fill: true,
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: gridConfig(), ticks: { color: MUTED } },
+            y: {
+              grid: gridConfig(), ticks: { color: MUTED },
+              reverse: true,
+              min: paceMin, max: paceMax
+            }
+          }
+        }
+      });
+
+      // HR
+      const hrVals = hrs.filter(h => h > 0);
+      const hrMin = hrVals.length ? Math.min(...hrVals) - 10 : 140;
+      const hrMax = hrVals.length ? Math.max(...hrVals) + 10 : 180;
+      charts.runHR = new Chart(document.getElementById('runHRChart'), {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'BPM promedio',
+            data: hrs,
+            borderColor: ACCENT3,
+            backgroundColor: ACCENT3 + '15',
+            tension: 0.4, pointRadius: 4, borderWidth: 2,
+            fill: true,
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: gridConfig(), ticks: { color: MUTED } },
+            y: { grid: gridConfig(), ticks: { color: MUTED }, min: hrMin, max: hrMax }
+          }
+        }
+      });
+    }
+
+    // --- BODY COMPOSITION ---
+    function buildBodyCharts(antroRaw) {
+      // Extraer datos de la última medición (puede venir del PDF parser con campos extendidos)
+      let masses, perimeters, perimScoreZ, pliegues, pliegScoreZ;
+
+      if (antroRaw && antroRaw.length > 0) {
+        const last = antroRaw[antroRaw.length - 1];
+        masses = [
+          parseFloat(last.masa_muscular_kg) || 38.93,
+          parseFloat(last.masa_adiposa_kg) || 17.83,
+          parseFloat(last.masa_residual_kg) || 8.26,
+          parseFloat(last.masa_osea_kg) || 8.78,
+          parseFloat(last.masa_piel_kg) || 3.71
+        ];
+        if (last.perimetros_all) {
+          const p = last.perimetros_all;
+          perimeters = [
+            parseFloat(p.brazo_relajado) || 34.70, parseFloat(p.brazo_flex) || 38.50,
+            parseFloat(p.antebrazo) || 28.40, parseFloat(p.torax) || 101.50,
+            parseFloat(p.cintura) || 80.00, parseFloat(p.muslo_sup) || 61.00,
+            parseFloat(p.muslo_med) || 57.00, parseFloat(p.pantorrilla) || 36.70,
+          ];
+          const sz = (p.scorez || {});
+          perimScoreZ = [
+            parseFloat(sz.brazo_relajado) || 0, parseFloat(sz.brazo_flex) || 0,
+            parseFloat(sz.antebrazo) || 0, parseFloat(sz.torax) || 0,
+            parseFloat(sz.cintura) || 0, parseFloat(sz.muslo_sup) || 0,
+            parseFloat(sz.muslo_med) || 0, parseFloat(sz.pantorrilla) || 0,
+          ];
+        }
+        if (last.pliegues_all) {
+          const pl = last.pliegues_all;
+          pliegues = [
+            parseFloat(pl.triceps) || 10.00, parseFloat(pl.subescapular) || 10.50,
+            parseFloat(pl.supraespinal) || 12.50, parseFloat(pl.abdominal) || 19.50,
+            parseFloat(pl.muslo) || 11.00, parseFloat(pl.pantorrilla) || 9.00,
+          ];
+          const sz = (pl.scorez || {});
+          pliegScoreZ = [
+            parseFloat(sz.triceps) || 0, parseFloat(sz.subescapular) || 0,
+            parseFloat(sz.supraespinal) || 0, parseFloat(sz.abdominal) || 0,
+            parseFloat(sz.muslo) || 0, parseFloat(sz.pantorrilla) || 0,
+          ];
+        }
+      }
+
+      masses = masses || [38.93, 17.83, 8.26, 8.78, 3.71];
+      perimeters = perimeters || [34.70, 38.50, 28.40, 101.50, 80.00, 61.00, 57.00, 36.70];
+      perimScoreZ = perimScoreZ || [3.07, 3.52, 1.93, 2.26, 1.47, 0.95, 0.83, 0.33];
+      pliegues = pliegues || [10.00, 10.50, 12.50, 19.50, 11.00, 9.00];
+      pliegScoreZ = pliegScoreZ || [-1.25, -1.36, -0.70, -0.81, -1.95, -1.54];
+
+      // Mass bar
+      charts.massBar = new Chart(document.getElementById('massBarChart'), {
+        type: 'bar',
+        data: {
+          labels: ['Muscular', 'Adiposa', 'Residual', 'Ósea', 'Piel'],
+          datasets: [{
+            label: 'kg',
+            data: masses,
+            backgroundColor: [ACCENT2, ACCENT3, ACCENT, ORANGE, MUTED],
+            borderWidth: 0,
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: gridConfig(), ticks: { color: '#888' } },
+            y: { grid: gridConfig(), ticks: { color: MUTED }, title: { display: true, text: 'kg', color: MUTED } }
+          }
+        }
+      });
+
+      buildBodyPieChart('bodyPieChart2', [masses[0], masses[1], masses[3], masses[2], masses[4]]);
+
+      // Perimeters with score-z
+      charts.perimeter = new Chart(document.getElementById('perimeterChart'), {
+        type: 'bar',
+        data: {
+          labels: ['Brazo Rel.', 'Brazo Flex.', 'Antebrazo', 'Tórax Mes.', 'Cintura', 'Muslo Sup.', 'Muslo Med.', 'Pantorrilla'],
+          datasets: [
+            {
+              label: 'Score-Z',
+              data: perimScoreZ,
+              backgroundColor: ACCENT2 + '99',
+              borderWidth: 0,
+              yAxisID: 'y2',
+              type: 'line',
+              borderColor: ACCENT2,
+              pointRadius: 4,
+              tension: 0.3,
+            },
+            {
+              label: 'cm',
+              data: perimeters,
+              backgroundColor: ACCENT + '55',
+              borderWidth: 0,
+              yAxisID: 'y1',
+            }
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { labels: { color: '#888', font: { size: 10 }, boxWidth: 10 } } },
+          scales: {
+            x: { grid: { display: false }, ticks: { color: '#888', font: { size: 9 } } },
+            y1: { grid: gridConfig(), ticks: { color: MUTED }, position: 'left' },
+            y2: {
+              grid: { display: false },
+              ticks: { color: ACCENT2 },
+              position: 'right',
+              title: { display: true, text: 'Score-Z', color: ACCENT2 }
+            }
+          }
+        }
+      });
+
+      // Pliegues
+      charts.pliegues = new Chart(document.getElementById('plieguesChart'), {
+        type: 'bar',
+        data: {
+          labels: ['Tríceps', 'Subescap.', 'Supraespinal', 'Abdominal', 'Muslo med.', 'Pantorrilla'],
+          datasets: [
+            {
+              label: 'Score-Z',
+              data: pliegScoreZ,
+              backgroundColor: ACCENT3 + '99',
+              borderWidth: 0,
+              yAxisID: 'y2',
+              type: 'line',
+              borderColor: ACCENT3,
+              pointRadius: 4,
+              tension: 0.3,
+            },
+            {
+              label: 'mm',
+              data: pliegues,
+              backgroundColor: ORANGE + '55',
+              borderWidth: 0,
+              yAxisID: 'y1',
+            }
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { labels: { color: '#888', font: { size: 10 }, boxWidth: 10 } } },
+          scales: {
+            x: { grid: { display: false }, ticks: { color: '#888', font: { size: 9 } } },
+            y1: { grid: gridConfig(), ticks: { color: MUTED }, position: 'left' },
+            y2: {
+              grid: { display: false },
+              ticks: { color: ACCENT3 },
+              position: 'right',
+              title: { display: true, text: 'Score-Z', color: ACCENT3 }
+            }
+          }
+        }
+      });
+    }
+
+    // ===== INIT =====
+    window.addEventListener('load', async () => {
+      // Intentar cargar datos del servidor
+      const connected = await loadAPIData();
+
+      if (connected && API_DATA) {
+        // --- DATOS REALES DEL SERVIDOR ---
+        const gymReal = processGymData(API_DATA.gimnasio);
+        const runReal = processRunningData(API_DATA.running);
+        const antroReal = processAntroData(API_DATA.antropometria);
+
+        // Si hay datos de gimnasio reales, reemplazar el gymData hardcodeado
+        if (gymReal && gymReal.weeks.length > 0) {
+          // Reconstruir gymData.weeks con las semanas reales
+          gymData.weeks = gymReal.weeks.map((w, i) => `SEMANA ${i + 1} · ${w}`);
+
+          // Reconstruir gymData.exercises con datos reales
+          gymData.exercises = {};
+          gymReal.weeks.forEach((weekKey, wi) => {
+            const weekExs = gymReal.byWeek[weekKey] || {};
+            Object.entries(weekExs).forEach(([exName, exData]) => {
+              if (!gymData.exercises[exName]) {
+                gymData.exercises[exName] = {
+                  day: exData.day,
+                  group: exData.group.toUpperCase(),
+                  weights: [0, 0, 0],
+                  reps: [[0], [0], [0]]
+                };
+              }
+              const repsArr = exData.series.map(s => s.reps);
+              const maxWeight = Math.max(...exData.series.map(s => s.peso));
+              gymData.exercises[exName].reps[wi] = repsArr;
+              gymData.exercises[exName].weights[wi] = maxWeight;
+            });
+          });
+
+          // Actualizar week selector con semanas reales
+          const ws = document.querySelector('.week-selector');
+          ws.innerHTML = gymData.weeks.map((w, i) =>
+            `<button class="week-btn ${i === 0 ? 'active' : ''}" onclick="selectWeek(this,${i})">${w}</button>`
+          ).join('');
+        }
+
+        // Actualizar stats de running si hay datos reales
+        if (runReal && runReal.length > 0) {
+          const totalDist = runReal.reduce((s, r) => s + r.distancia, 0).toFixed(1);
+          const avgPace = runReal.reduce((s, r) => s + r.pace, 0) / runReal.length;
+          const avgHR = Math.round(runReal.reduce((s, r) => s + r.fc_prom, 0) / runReal.length);
+          const runCount = runReal.length;
+
+          // Actualizar stat cards de running
+          const runStats = document.querySelectorAll('#tab-running .stat-card');
+          if (runStats[0]) { runStats[0].querySelector('.stat-value').textContent = totalDist; runStats[0].querySelector('.stat-unit').textContent = 'KM'; }
+          if (runStats[1]) { const m = Math.floor(avgPace); const s = Math.round((avgPace-m)*60); runStats[1].querySelector('.stat-value').textContent = m+':'+String(s).padStart(2,'0'); }
+          if (runStats[2]) runStats[2].querySelector('.stat-value').textContent = avgHR;
+          if (runStats[3]) runStats[3].querySelector('.stat-value').textContent = runCount;
+
+          // Actualizar la lista de actividades
+          updateRunningActivityList(runReal);
+
+          // Actualizar subtítulo
+          const runSub = document.querySelector('#tab-running .section-subtitle');
+          if (runSub) runSub.textContent = 'DATOS DE GARMIN CONNECT';
+
+          // Ocultar la tarjeta de aviso de Garmin
+          const garminNotice = document.getElementById('garmin-notice-card');
+          if (garminNotice) garminNotice.style.display = 'none';
+        }
+
+        // Actualizar stats de antropometría si hay datos reales
+        if (antroReal && antroReal.length > 0) {
+          const last = antroReal[antroReal.length - 1];
+          // Buscar y actualizar stat cards de composición corporal
+          const bodyStats = document.querySelectorAll('#tab-body .stat-card');
+          if (bodyStats[0]) bodyStats[0].querySelector('.stat-value').textContent = last.peso.toFixed(1);
+          if (bodyStats[1]) bodyStats[1].querySelector('.stat-value').textContent = last.muscular.toFixed(2);
+          if (bodyStats[2]) bodyStats[2].querySelector('.stat-value').textContent = last.adiposa.toFixed(2);
+          if (bodyStats[3]) bodyStats[3].querySelector('.stat-value').textContent = last.osea.toFixed(2);
+          if (bodyStats[4]) bodyStats[4].querySelector('.stat-value').textContent = Math.round(last.metabolismo);
+          if (bodyStats[5]) bodyStats[5].querySelector('.stat-value').textContent = Math.round(last.gasto);
+
+          // Actualizar subtítulo con fecha real del PDF
+          const bodySub = document.querySelector('#tab-body .section-subtitle');
+          if (bodySub && last.fecha) {
+            const parts = last.fecha.split('-');
+            const fechaFmt = parts[2] + '/' + parts[1] + '/' + parts[0];
+            bodySub.textContent = 'INFORME ISAK \u00B7 DATOS DEL PDF \u00B7 ' + fechaFmt;
+          }
+        }
+      }
+
+      // Preparar datos para los chart builders
+      const runData = (API_DATA && API_DATA.running && API_DATA.running.length > 0)
+        ? processRunningData(API_DATA.running) : null;
+      const antroRaw = (API_DATA && API_DATA.antropometria && API_DATA.antropometria.length > 0)
+        ? API_DATA.antropometria : null;
+      const massData = antroRaw ? (() => {
+        const last = antroRaw[antroRaw.length - 1];
+        return [
+          parseFloat(last.masa_muscular_kg) || 38.93, parseFloat(last.masa_adiposa_kg) || 17.83,
+          parseFloat(last.masa_osea_kg) || 8.78, parseFloat(last.masa_residual_kg) || 8.26,
+          parseFloat(last.masa_piel_kg) || 3.71
+        ];
+      })() : null;
+
+      // Construir todos los gráficos (con datos reales si los hay, o con fallback)
+      buildOverviewVolChart();
+      buildBodyPieChart('bodyPieChart', massData);
+      buildOverviewProgressChart();
+      updateGymWeekCharts();
+      buildGymCompoundChart();
+      renderExerciseTable();
+      buildRunningCharts(runData);
+      buildBodyCharts(antroRaw);
+    });
+
+    // Helper: actualizar la lista de últimas actividades de running
+    function updateRunningActivityList(runData) {
+      const cards = document.querySelectorAll('#tab-running .chart-card');
+      // Buscar la card que tiene "ÚLTIMAS ACTIVIDADES"
+      let runCard = null;
+      cards.forEach(c => { if (c.textContent.includes('LTIMAS ACTIVIDADES')) runCard = c; });
+      if (!runCard) return;
+
+      const title = runCard.querySelector('.chart-title');
+      const titleHTML = title ? title.outerHTML.replace('(EJEMPLO)', '') : '';
+      runCard.innerHTML = titleHTML;
+
+      const recent = runData.slice(-8).reverse();
+      recent.forEach(r => {
+        const dateStr = new Date(r.fecha).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase();
+        const paceMin = Math.floor(r.pace);
+        const paceSec = Math.round((r.pace - paceMin) * 60);
+        const durMin = Math.floor(r.tiempo);
+        const durSec = Math.round((r.tiempo - durMin) * 60);
+        const row = document.createElement('div');
+        row.className = 'run-row';
+        row.innerHTML = `<div><div class="run-date">${dateStr}</div><div class="run-pace">Pace ${paceMin}:${String(paceSec).padStart(2,'0')} · FC ${r.fc_prom}</div></div><div class="run-dist">${r.distancia.toFixed(1)} KM</div><div class="run-hr">${durMin}:${String(durSec).padStart(2,'0')} min</div>`;
+        runCard.appendChild(row);
+      });
+    }
+  </script>
+</body>
+
+</html>
