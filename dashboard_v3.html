@@ -591,6 +591,38 @@
     ::-webkit-scrollbar-thumb {
       background: var(--muted2);
     }
+
+    /* EMPTY STATES */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      min-height: 120px;
+      text-align: center;
+      gap: 8px;
+    }
+
+    .empty-state-icon {
+      font-family: 'DM Mono', monospace;
+      font-size: 20px;
+      color: var(--muted2);
+      letter-spacing: 6px;
+    }
+
+    .empty-state-msg {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 1px;
+      line-height: 1.6;
+      max-width: 300px;
+    }
+
+    .stat-value.empty {
+      color: var(--muted2);
+    }
   </style>
 </head>
 
@@ -600,8 +632,8 @@
     <div class="logo">MANU<span>///</span>LOGS</div>
     <div class="header-meta">
       <div><span class="live-dot"></span>PROTOTYPE v0.1</div>
-      <div>SEPTIEMBRE 2025 — DATOS REALES</div>
-      <div>MANUEL LOIACONO · 22 AÑOS · 77.5 KG</div>
+      <div id="header-date">DASHBOARD PERSONAL</div>
+      <div id="header-info">MANUEL LOIACONO</div>
     </div>
   </header>
 
@@ -617,49 +649,45 @@
     <!-- =================== OVERVIEW =================== -->
     <div class="tab-panel active" id="tab-overview">
       <div class="section-title">OVERVIEW</div>
-      <div class="section-subtitle">SEPTIEMBRE 2025 · SEMANA A SEMANA</div>
+      <div class="section-subtitle" id="ov-subtitle">RESUMEN GENERAL</div>
 
-      <div class="pr-bar">
+      <div class="pr-bar" id="pr-bar">
         <div class="pr-label">PRs ↗</div>
-        <div class="pr-items">
-          <div class="pr-item">PRESS BANCA <strong>70kg × 7</strong></div>
-          <div class="pr-item">REMO BARRA <strong>85kg × 7</strong></div>
-          <div class="pr-item">SQ/PRENSA <strong>80kg × 6</strong></div>
-          <div class="pr-item">RDL <strong>75kg × 6</strong></div>
-          <div class="pr-item">DOMINADAS <strong>+0kg × 10</strong></div>
+        <div class="pr-items" id="pr-items">
+          <div class="pr-item" style="color: var(--muted)">Sin PRs registrados</div>
         </div>
       </div>
 
       <div class="stats-row">
         <div class="stat-card">
           <div class="stat-label">Semanas registradas</div>
-          <div class="stat-value">3</div>
-          <div class="stat-unit">SEP 2025</div>
+          <div class="stat-value empty" id="ov-stat-weeks">&mdash;</div>
+          <div class="stat-unit" id="ov-unit-weeks"></div>
         </div>
         <div class="stat-card blue">
           <div class="stat-label">Ejercicios trackeados</div>
-          <div class="stat-value">14</div>
+          <div class="stat-value empty" id="ov-stat-exercises">&mdash;</div>
           <div class="stat-unit">ÚNICOS</div>
         </div>
         <div class="stat-card pink">
           <div class="stat-label">Días de entreno</div>
-          <div class="stat-value">3</div>
+          <div class="stat-value empty" id="ov-stat-days">&mdash;</div>
           <div class="stat-unit">POR SEMANA</div>
         </div>
         <div class="stat-card orange">
           <div class="stat-label">Peso corporal</div>
-          <div class="stat-value">77.5</div>
-          <div class="stat-unit">KG · FEB 2026</div>
+          <div class="stat-value empty" id="ov-stat-peso">&mdash;</div>
+          <div class="stat-unit" id="ov-unit-peso">KG</div>
         </div>
         <div class="stat-card">
           <div class="stat-label">Masa muscular</div>
-          <div class="stat-value">38.9</div>
-          <div class="stat-unit">KG · 50.1%</div>
+          <div class="stat-value empty" id="ov-stat-muscular">&mdash;</div>
+          <div class="stat-unit" id="ov-unit-muscular">KG</div>
         </div>
         <div class="stat-card blue">
           <div class="stat-label">Masa adiposa</div>
-          <div class="stat-value">17.8</div>
-          <div class="stat-unit">KG · 23%</div>
+          <div class="stat-value empty" id="ov-stat-adiposa">&mdash;</div>
+          <div class="stat-unit" id="ov-unit-adiposa">KG</div>
         </div>
       </div>
 
@@ -676,7 +704,7 @@
         <div class="chart-card">
           <div class="chart-title">
             <span class="chart-title-dot pink"></span>
-            COMPOSICIÓN CORPORAL · FEB 2026
+            COMPOSICIÓN CORPORAL
           </div>
           <div class="chart-wrapper">
             <canvas id="bodyPieChart"></canvas>
@@ -698,12 +726,10 @@
     <!-- =================== GIMNASIO =================== -->
     <div class="tab-panel" id="tab-gym">
       <div class="section-title">GIMNASIO</div>
-      <div class="section-subtitle">SEPTIEMBRE 2025 · 3 DÍAS / SEMANA · FUERZA + HIPERTROFIA</div>
+      <div class="section-subtitle" id="gym-subtitle">DATOS DE GOOGLE SHEETS</div>
 
-      <div class="week-selector">
-        <button class="week-btn active" onclick="selectWeek(this, 0)">SEMANA 1</button>
-        <button class="week-btn" onclick="selectWeek(this, 1)">SEMANA 2</button>
-        <button class="week-btn" onclick="selectWeek(this, 2)">SEMANA 3</button>
+      <div class="week-selector" id="week-selector">
+        <!-- Populated by JS when gym data loads -->
       </div>
 
       <div class="grid-2-1">
@@ -756,25 +782,23 @@
 
       <div class="stats-row">
         <div class="stat-card blue">
-          <div class="stat-label">Distancia total mes</div>
-          <div class="stat-value">47.2</div>
-          <div class="stat-unit">KM · EJEMPLO</div>
-          <div class="stat-delta up">↑ +8.4km vs mes ant.</div>
+          <div class="stat-label">Distancia total</div>
+          <div class="stat-value empty" id="run-stat-dist">&mdash;</div>
+          <div class="stat-unit">KM</div>
         </div>
         <div class="stat-card blue">
           <div class="stat-label">Pace promedio</div>
-          <div class="stat-value">5:24</div>
+          <div class="stat-value empty" id="run-stat-pace">&mdash;</div>
           <div class="stat-unit">MIN/KM</div>
-          <div class="stat-delta up">↓ -0:12 mejora</div>
         </div>
         <div class="stat-card">
           <div class="stat-label">FC promedio</div>
-          <div class="stat-value">158</div>
+          <div class="stat-value empty" id="run-stat-hr">&mdash;</div>
           <div class="stat-unit">BPM</div>
         </div>
         <div class="stat-card">
-          <div class="stat-label">Runs este mes</div>
-          <div class="stat-value">8</div>
+          <div class="stat-label">Runs totales</div>
+          <div class="stat-value empty" id="run-stat-count">&mdash;</div>
           <div class="stat-unit">ACTIVIDADES</div>
         </div>
       </div>
@@ -810,50 +834,14 @@
             <canvas id="runHRChart"></canvas>
           </div>
         </div>
-        <div class="run-card">
+        <div class="run-card" id="running-activities-card">
           <div class="chart-title" style="margin-bottom: 4px;">
             <span class="chart-title-dot blue"></span>
-            ÚLTIMAS ACTIVIDADES (EJEMPLO)
+            ÚLTIMAS ACTIVIDADES
           </div>
-          <div class="run-row">
-            <div>
-              <div class="run-date">01 SEP 2025</div>
-              <div class="run-pace">Pace 5:22 · FC 156</div>
-            </div>
-            <div class="run-dist">8.2 KM</div>
-            <div class="run-hr">42:18 min</div>
-          </div>
-          <div class="run-row">
-            <div>
-              <div class="run-date">04 SEP 2025</div>
-              <div class="run-pace">Pace 5:10 · FC 162</div>
-            </div>
-            <div class="run-dist">5.0 KM</div>
-            <div class="run-hr">25:50 min</div>
-          </div>
-          <div class="run-row">
-            <div>
-              <div class="run-date">08 SEP 2025</div>
-              <div class="run-pace">Pace 5:35 · FC 154</div>
-            </div>
-            <div class="run-dist">10.1 KM</div>
-            <div class="run-hr">56:14 min</div>
-          </div>
-          <div class="run-row">
-            <div>
-              <div class="run-date">13 SEP 2025</div>
-              <div class="run-pace">Pace 5:18 · FC 159</div>
-            </div>
-            <div class="run-dist">7.5 KM</div>
-            <div class="run-hr">39:45 min</div>
-          </div>
-          <div class="run-row">
-            <div>
-              <div class="run-date">17 SEP 2025</div>
-              <div class="run-pace">Pace 5:05 · FC 165</div>
-            </div>
-            <div class="run-dist">6.0 KM</div>
-            <div class="run-hr">30:30 min</div>
+          <div class="empty-state" id="running-activities-empty">
+            <div class="empty-state-icon">· · ·</div>
+            <div class="empty-state-msg">Sin actividades registradas. Conecta Garmin para ver tus runs.</div>
           </div>
         </div>
       </div>
@@ -876,39 +864,37 @@
     <!-- =================== COMPOSICIÓN =================== -->
     <div class="tab-panel" id="tab-body">
       <div class="section-title">COMPOSICIÓN CORPORAL</div>
-      <div class="section-subtitle">INFORME ISAK · LIC. GABRIELA DOMINGUEZ · 13/02/2026</div>
+      <div class="section-subtitle" id="body-subtitle">INFORME ISAK</div>
 
       <div class="stats-row">
         <div class="stat-card">
           <div class="stat-label">Peso total</div>
-          <div class="stat-value">77.5</div>
+          <div class="stat-value empty" id="body-stat-peso">&mdash;</div>
           <div class="stat-unit">KG</div>
         </div>
         <div class="stat-card blue">
           <div class="stat-label">Masa muscular</div>
-          <div class="stat-value">38.93</div>
-          <div class="stat-unit">KG · 50.2%</div>
-          <div class="stat-delta up">Score-Z: +2.74</div>
+          <div class="stat-value empty" id="body-stat-muscular">&mdash;</div>
+          <div class="stat-unit" id="body-unit-muscular">KG</div>
         </div>
         <div class="stat-card">
           <div class="stat-label">Masa adiposa</div>
-          <div class="stat-value">17.83</div>
-          <div class="stat-unit">KG · 23.0%</div>
-          <div class="stat-delta up">Score-Z: -1.30 (bajo)</div>
+          <div class="stat-value empty" id="body-stat-adiposa">&mdash;</div>
+          <div class="stat-unit" id="body-unit-adiposa">KG</div>
         </div>
         <div class="stat-card orange">
           <div class="stat-label">Masa ósea</div>
-          <div class="stat-value">8.78</div>
-          <div class="stat-unit">KG · 11.5%</div>
+          <div class="stat-value empty" id="body-stat-osea">&mdash;</div>
+          <div class="stat-unit" id="body-unit-osea">KG</div>
         </div>
         <div class="stat-card pink">
           <div class="stat-label">Metab. basal</div>
-          <div class="stat-value">1755</div>
+          <div class="stat-value empty" id="body-stat-metab">&mdash;</div>
           <div class="stat-unit">KCAL / DÍA</div>
         </div>
         <div class="stat-card pink">
           <div class="stat-label">Gasto total est.</div>
-          <div class="stat-value">2809</div>
+          <div class="stat-value empty" id="body-stat-gasto">&mdash;</div>
           <div class="stat-unit">KCAL / DÍA</div>
         </div>
       </div>
@@ -973,7 +959,7 @@
   <script>
     // ===== API DATA LOADING =====
     // Intenta cargar datos del servidor local (server.py).
-    // Si falla (dashboard abierto sin servidor), usa datos de ejemplo.
+    // Si falla (dashboard abierto sin servidor), muestra empty states.
 
     let API_DATA = null;
 
@@ -1001,7 +987,7 @@
           return anyData;
         }
       } catch (e) {
-        // servidor no disponible — modo offline con datos de ejemplo
+        // servidor no disponible — modo offline
       }
       showConnectionBadge(false, null, {});
       return false;
@@ -1018,13 +1004,13 @@
         function dot(src, label) {
           if (!src) return '<span style="color:var(--muted)">○</span> ' + label;
           const srcTag = src === 'garmin' ? ' <span style="color:var(--accent2);font-size:9px">[G]</span>'
-                       : src === 'pdf' ? ' <span style="color:var(--accent2);font-size:9px">[PDF]</span>'
-                       : '';
+            : src === 'pdf' ? ' <span style="color:var(--accent2);font-size:9px">[PDF]</span>'
+              : '';
           return '<span style="color:var(--accent)">●</span> ' + label + srcTag;
         }
         badge.innerHTML = dot(sources.gym, 'GYM') + " &nbsp;" + dot(sources.run, 'RUN') + " &nbsp;" + dot(sources.antro, 'ANTRO') + " &nbsp;· " + d.toLocaleTimeString('es-AR');
       } else {
-        badge.innerHTML = '<span style="color:var(--muted)">○ MODO OFFLINE</span> · datos de ejemplo';
+        badge.innerHTML = '<span style="color:var(--muted)">○ MODO OFFLINE</span> · sin datos';
       }
       badge.style.cssText = "font-family:'DM Mono',monospace;font-size:10px;margin-top:4px;letter-spacing:1px;";
       meta.appendChild(badge);
@@ -1123,40 +1109,50 @@
       };
     }
 
-    // ===== DATA FROM REAL SEPTEMBER SHEET =====
-    // Parsed from Manuel's P_SEP_2025.xlsx
-    // Format: exercise -> [week1, week2, week3] -> parsed sets data
+    // ===== EMPTY STATE HELPERS =====
+    function showEmptyState(canvasId, message) {
+      const canvas = document.getElementById(canvasId);
+      if (!canvas) return;
+      const wrapper = canvas.parentElement;
+      canvas.style.display = 'none';
+      if (wrapper.querySelector('.empty-state')) return;
+      const emptyDiv = document.createElement('div');
+      emptyDiv.className = 'empty-state';
+      emptyDiv.innerHTML = '<div class="empty-state-icon">\u00B7 \u00B7 \u00B7</div><div class="empty-state-msg">' + message + '</div>';
+      wrapper.appendChild(emptyDiv);
+    }
 
-    const gymData = {
-      weeks: ['SEMANA 1', 'SEMANA 2', 'SEMANA 3'],
-      exercises: {
-        // Día 1
-        'VUELOS LAT. (D1)': { day: 1, group: 'HOMBRO', weights: [10, 10, 10], reps: [[11, 11, 11], [12, 12, 11], [10, 10, 10]] },
-        'PRESS BANCA': { day: 1, group: 'PECHO', weights: [70, 70, 68], reps: [[7, 6, 5], [6, 6, 5], [8, 5, 5]] },
-        'DOMINADAS': { day: 1, group: 'ESPALDA', weights: [0, 0, 0], reps: [[10, 7, 6], [9, 8, 6], [9, 5, 5]] },
-        'FONDOS': { day: 1, group: 'TRICEP', weights: [10, 10, 10], reps: [[14, 12, 10], [14, 9, 8], [8, 9, 9]] },
-        'CURL INCLINADO': { day: 1, group: 'BICEP', weights: [12, 12, 16], reps: [[10, 8, 6], [11, 6, 8], [16, 16, 16]] },
-        'SKULL MANCUERNA': { day: 1, group: 'TRICEP', weights: [10, 10, 0], reps: [[10, 8, 6], [12, 9, 6], [0, 0, 0]] },
-        // Día 2
-        'VUELOS LAT. (D2)': { day: 2, group: 'HOMBRO', weights: [10, 10, 10], reps: [[12, 12, 11], [11, 11, 11], [0, 0, 0]] },
-        'SQ / PRENSA 45': { day: 2, group: 'PIERNA', weights: [70, 78, 0], reps: [[6, 6, 6, 6], [6, 5, 6, 6], [0, 0, 0]] },
-        'RDL': { day: 2, group: 'PIERNA', weights: [70, 75, 0], reps: [[7, 7, 7, 7], [6, 6, 6, 6], [0, 0, 0]] },
-        'APERTURAS': { day: 2, group: 'PECHO', weights: [41, 41, 0], reps: [[12, 9, 7], [12, 11, 10], [0, 0, 0]] },
-        'DORSALERA': { day: 2, group: 'ESPALDA', weights: [54, 54, 0], reps: [[9, 8, 6], [10, 8, 7], [0, 0, 0]] },
-        // Día 3
-        'VUELOS LAT. (D3)': { day: 3, group: 'HOMBRO', weights: [10, 10, 10], reps: [[11, 11, 11], [12, 10, 10], [0, 0, 0]] },
-        'REMO BARRA': { day: 3, group: 'ESPALDA', weights: [80, 85, 83], reps: [[8, 8, 8], [6, 6, 7], [9, 7, 7]] },
-        'PRESS BANCA INC.': { day: 3, group: 'PECHO', weights: [25, 26, 26], reps: [[9, 9, 7], [8, 8, 6], [9, 8, 7]] },
-        'REMO HORI. UNI.': { day: 3, group: 'ESPALDA', weights: [32, 32, 32], reps: [[11, 10, 9], [9, 9, 9], [11, 9, 8]] },
-        'TRICEP POLEA': { day: 3, group: 'TRICEP', weights: [26, 0, 10], reps: [[10, 10, 10], [0, 0, 0], [13, 9, 7]] },
-        'BICEP': { day: 3, group: 'BICEP', weights: [12, 0, 23], reps: [[9, 9, 9], [0, 0, 0], [8, 7, 5]] },
+    function clearEmptyState(canvasId) {
+      const canvas = document.getElementById(canvasId);
+      if (!canvas) return;
+      canvas.style.display = '';
+      const wrapper = canvas.parentElement;
+      const emptyEl = wrapper.querySelector('.empty-state');
+      if (emptyEl) emptyEl.remove();
+    }
+
+    function updateStat(elementId, value) {
+      const el = document.getElementById(elementId);
+      if (!el) return;
+      if (value != null && value !== '' && value !== 0) {
+        el.textContent = value;
+        el.classList.remove('empty');
+      } else {
+        el.textContent = '\u2014';
+        el.classList.add('empty');
       }
+    }
+
+    // ===== GYM DATA (empty by default, populated from API) =====
+    let gymData = {
+      weeks: [],
+      exercises: {}
     };
 
     // Calculate volume = sum(reps) * weight for each week
     function calcVolume(exercise, weekIdx) {
       const d = gymData.exercises[exercise];
-      if (!d) return 0;
+      if (!d || !d.reps[weekIdx] || d.weights[weekIdx] == null) return 0;
       const reps = d.reps[weekIdx];
       const w = d.weights[weekIdx];
       return reps.reduce((a, b) => a + b, 0) * w;
@@ -1189,6 +1185,11 @@
 
     // --- OVERVIEW: Volume bar ---
     function buildOverviewVolChart() {
+      if (gymData.weeks.length === 0) {
+        showEmptyState('overviewVolChart', 'Sin datos de gimnasio. Agrega registros en tu Google Sheet.');
+        return;
+      }
+      clearEmptyState('overviewVolChart');
       const exNames = Object.keys(gymData.exercises);
       const weekVols = gymData.weeks.map((_, wi) => {
         return exNames.reduce((sum, ex) => sum + calcVolume(ex, wi), 0);
@@ -1218,9 +1219,14 @@
 
     // --- OVERVIEW: Body pie ---
     function buildBodyPieChart(canvasId, massData) {
+      if (!massData || massData.length === 0) {
+        showEmptyState(canvasId, 'Sin datos de composicion corporal. Agrega un PDF de informe ISAK.');
+        return;
+      }
+      clearEmptyState(canvasId);
       const ctx = document.getElementById(canvasId);
       if (!ctx) return;
-      const data = massData || [38.93, 17.83, 8.78, 8.26, 3.71];
+      const data = massData;
       charts[canvasId] = new Chart(ctx, {
         type: 'doughnut',
         data: {
@@ -1245,45 +1251,42 @@
       });
     }
 
-    // --- OVERVIEW: Progress chart ---
+    // --- OVERVIEW: Progress chart (dynamic from gymData) ---
     function buildOverviewProgressChart() {
+      if (gymData.weeks.length === 0) {
+        showEmptyState('overviewProgressChart', 'Sin datos de progresion. Registra varias semanas de gimnasio.');
+        return;
+      }
+      clearEmptyState('overviewProgressChart');
+
+      const weekLabels = gymData.weeks.map((_, i) => 'S' + (i + 1));
+      const compoundNames = Object.keys(gymData.exercises).filter(name => {
+        const g = gymData.exercises[name].group;
+        return ['PECHO', 'ESPALDA', 'PIERNA'].includes(g) && gymData.exercises[name].weights.some(w => w > 20);
+      }).slice(0, 5);
+      const colors = [ACCENT, ACCENT2, ORANGE, ACCENT3, '#ff9f40'];
+      const datasets = [];
+
+      compoundNames.forEach((name, ci) => {
+        const ex = gymData.exercises[name];
+        if (!ex) return;
+        const data = ex.weights.map(w => w > 0 ? w : null);
+        datasets.push({
+          label: name,
+          data: data,
+          borderColor: colors[ci], backgroundColor: colors[ci] + '15',
+          tension: 0.3, pointRadius: 5, borderWidth: 2, spanGaps: false,
+        });
+      });
+
+      if (datasets.length === 0) {
+        showEmptyState('overviewProgressChart', 'Sin ejercicios compuestos registrados.');
+        return;
+      }
+
       charts.overviewProgress = new Chart(document.getElementById('overviewProgressChart'), {
         type: 'line',
-        data: {
-          labels: ['S1', 'S2', 'S3'],
-          datasets: [
-            {
-              label: 'Press Banca (kg)',
-              data: [70, 70, 68],
-              borderColor: ACCENT,
-              backgroundColor: ACCENT + '15',
-              tension: 0.3, pointRadius: 5, borderWidth: 2,
-            },
-            {
-              label: 'Remo Barra (kg)',
-              data: [80, 85, 83],
-              borderColor: ACCENT2,
-              backgroundColor: ACCENT2 + '15',
-              tension: 0.3, pointRadius: 5, borderWidth: 2,
-            },
-            {
-              label: 'SQ/Prensa 45 (kg)',
-              data: [70, 78, null],
-              borderColor: ORANGE,
-              backgroundColor: ORANGE + '15',
-              tension: 0.3, pointRadius: 5, borderWidth: 2,
-              spanGaps: false,
-            },
-            {
-              label: 'RDL (kg)',
-              data: [70, 75, null],
-              borderColor: ACCENT3,
-              backgroundColor: ACCENT3 + '15',
-              tension: 0.3, pointRadius: 5, borderWidth: 2,
-              spanGaps: false,
-            },
-          ]
-        },
+        data: { labels: weekLabels, datasets: datasets },
         options: {
           responsive: true, maintainAspectRatio: false,
           plugins: {
@@ -1303,6 +1306,13 @@
     let gymVolumeChart, gymDayChart;
 
     function updateGymWeekCharts() {
+      if (gymData.weeks.length === 0) {
+        showEmptyState('gymVolumeChart', 'Sin datos de volumen. Agrega ejercicios en tu Google Sheet.');
+        showEmptyState('gymDayChart', 'Sin distribucion por dia.');
+        return;
+      }
+      clearEmptyState('gymVolumeChart');
+      clearEmptyState('gymDayChart');
       const wi = activeWeek;
       const exNames = Object.keys(gymData.exercises);
       const vols = exNames.map(ex => calcVolume(ex, wi));
@@ -1367,45 +1377,41 @@
       });
     }
 
-    // --- GYM: Compound lifts progression ---
+    // --- GYM: Compound lifts progression (dynamic from gymData) ---
     function buildGymCompoundChart() {
+      if (gymData.weeks.length === 0) {
+        showEmptyState('gymCompoundChart', 'Sin datos de progresion. Registra varias semanas.');
+        return;
+      }
+      clearEmptyState('gymCompoundChart');
+
+      const weekLabels = gymData.weeks.map((_, i) => 'S' + (i + 1));
+      const compoundNames = Object.keys(gymData.exercises).filter(name => {
+        return gymData.exercises[name].weights.some(w => w > 20);
+      }).slice(0, 6);
+      const colors = [ACCENT, ACCENT2, ORANGE, ACCENT3, '#ff9f40', '#a78bfa'];
+      const datasets = [];
+
+      compoundNames.forEach((name, ci) => {
+        const ex = gymData.exercises[name];
+        if (!ex) return;
+        const data = ex.weights.map(w => w > 0 ? w : null);
+        datasets.push({
+          label: name,
+          data: data,
+          borderColor: colors[ci], backgroundColor: colors[ci] + '15',
+          tension: 0.3, pointRadius: 5, borderWidth: 2, spanGaps: false,
+        });
+      });
+
+      if (datasets.length === 0) {
+        showEmptyState('gymCompoundChart', 'Sin ejercicios compuestos registrados.');
+        return;
+      }
+
       charts.gymCompound = new Chart(document.getElementById('gymCompoundChart'), {
         type: 'line',
-        data: {
-          labels: ['S1', 'S2', 'S3'],
-          datasets: [
-            {
-              label: 'Press Banca',
-              data: [70, 70, 68],
-              borderColor: ACCENT, backgroundColor: ACCENT + '15',
-              tension: 0.3, pointRadius: 5, borderWidth: 2,
-            },
-            {
-              label: 'Remo Barra',
-              data: [80, 85, 83],
-              borderColor: ACCENT2, backgroundColor: ACCENT2 + '15',
-              tension: 0.3, pointRadius: 5, borderWidth: 2,
-            },
-            {
-              label: 'Press Banca Inc.',
-              data: [25, 26, 26],
-              borderColor: ORANGE, backgroundColor: ORANGE + '15',
-              tension: 0.3, pointRadius: 5, borderWidth: 2,
-            },
-            {
-              label: 'SQ/Prensa',
-              data: [70, 78, null],
-              borderColor: ACCENT3, backgroundColor: ACCENT3 + '15',
-              tension: 0.3, pointRadius: 5, borderWidth: 2, spanGaps: false,
-            },
-            {
-              label: 'RDL',
-              data: [70, 75, null],
-              borderColor: '#ff9f40', backgroundColor: '#ff9f4015',
-              tension: 0.3, pointRadius: 5, borderWidth: 2, spanGaps: false,
-            },
-          ]
-        },
+        data: { labels: weekLabels, datasets: datasets },
         options: {
           responsive: true, maintainAspectRatio: false,
           plugins: {
@@ -1421,6 +1427,11 @@
 
     // --- EXERCISE TABLE ---
     function renderExerciseTable() {
+      const container = document.getElementById('exerciseTableContainer');
+      if (gymData.weeks.length === 0 || Object.keys(gymData.exercises).length === 0) {
+        container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">\u00B7 \u00B7 \u00B7</div><div class="empty-state-msg">Sin ejercicios registrados. Agrega datos en tu Google Sheet.</div></div>';
+        return;
+      }
       const wi = activeWeek;
       const rows = Object.entries(gymData.exercises).map(([name, d]) => {
         const vol = calcVolume(name, wi);
@@ -1479,6 +1490,16 @@
 
     // --- RUNNING CHARTS ---
     function buildRunningCharts(runData) {
+      if (!runData || runData.length === 0) {
+        showEmptyState('runDistChart', 'Sin datos de distancia. Conecta Garmin o agrega datos en tu Sheet.');
+        showEmptyState('runPaceChart', 'Sin datos de pace.');
+        showEmptyState('runHRChart', 'Sin datos de frecuencia cardiaca.');
+        return;
+      }
+      clearEmptyState('runDistChart');
+      clearEmptyState('runPaceChart');
+      clearEmptyState('runHRChart');
+
       let labels, distances, paces, hrs;
 
       if (runData && runData.length > 0) {
@@ -1495,7 +1516,7 @@
           if (r.fc_prom > 0) weekMap[key].hrs.push(r.fc_prom);
         });
         const weeks = Object.keys(weekMap).sort();
-        const MESES = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
+        const MESES = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
         labels = weeks.map(w => {
           const d = new Date(w);
           return `S${Math.ceil(d.getDate() / 7)} ${MESES[d.getMonth()]}`;
@@ -1509,11 +1530,6 @@
           const h = weekMap[w].hrs;
           return h.length ? Math.round(h.reduce((a, b) => a + b) / h.length) : 0;
         });
-      } else {
-        labels = ['S1 AGO', 'S2 AGO', 'S3 AGO', 'S4 AGO', 'S1 SEP', 'S2 SEP', 'S3 SEP', 'S4 SEP'];
-        distances = [12.5, 15.0, 8.2, 14.0, 13.5, 11.2, 16.5, 6.0];
-        paces = [5.55, 5.48, 5.60, 5.42, 5.38, 5.30, 5.25, 5.15];
-        hrs = [163, 160, 165, 158, 159, 156, 157, 154];
       }
 
       // Distance
@@ -1598,25 +1614,26 @@
 
     // --- BODY COMPOSITION ---
     function buildBodyCharts(antroRaw) {
-      // Extraer datos de la última medición (puede venir del PDF parser con campos extendidos)
       let masses, perimeters, perimScoreZ, pliegues, pliegScoreZ;
 
       if (antroRaw && antroRaw.length > 0) {
         const last = antroRaw[antroRaw.length - 1];
         masses = [
-          parseFloat(last.masa_muscular_kg) || 38.93,
-          parseFloat(last.masa_adiposa_kg) || 17.83,
-          parseFloat(last.masa_residual_kg) || 8.26,
-          parseFloat(last.masa_osea_kg) || 8.78,
-          parseFloat(last.masa_piel_kg) || 3.71
+          parseFloat(last.masa_muscular_kg) || 0,
+          parseFloat(last.masa_adiposa_kg) || 0,
+          parseFloat(last.masa_residual_kg) || 0,
+          parseFloat(last.masa_osea_kg) || 0,
+          parseFloat(last.masa_piel_kg) || 0
         ];
+        if (masses.every(m => m === 0)) masses = null;
+
         if (last.perimetros_all) {
           const p = last.perimetros_all;
           perimeters = [
-            parseFloat(p.brazo_relajado) || 34.70, parseFloat(p.brazo_flex) || 38.50,
-            parseFloat(p.antebrazo) || 28.40, parseFloat(p.torax) || 101.50,
-            parseFloat(p.cintura) || 80.00, parseFloat(p.muslo_sup) || 61.00,
-            parseFloat(p.muslo_med) || 57.00, parseFloat(p.pantorrilla) || 36.70,
+            parseFloat(p.brazo_relajado) || 0, parseFloat(p.brazo_flex) || 0,
+            parseFloat(p.antebrazo) || 0, parseFloat(p.torax) || 0,
+            parseFloat(p.cintura) || 0, parseFloat(p.muslo_sup) || 0,
+            parseFloat(p.muslo_med) || 0, parseFloat(p.pantorrilla) || 0,
           ];
           const sz = (p.scorez || {});
           perimScoreZ = [
@@ -1629,9 +1646,9 @@
         if (last.pliegues_all) {
           const pl = last.pliegues_all;
           pliegues = [
-            parseFloat(pl.triceps) || 10.00, parseFloat(pl.subescapular) || 10.50,
-            parseFloat(pl.supraespinal) || 12.50, parseFloat(pl.abdominal) || 19.50,
-            parseFloat(pl.muslo) || 11.00, parseFloat(pl.pantorrilla) || 9.00,
+            parseFloat(pl.triceps) || 0, parseFloat(pl.subescapular) || 0,
+            parseFloat(pl.supraespinal) || 0, parseFloat(pl.abdominal) || 0,
+            parseFloat(pl.muslo) || 0, parseFloat(pl.pantorrilla) || 0,
           ];
           const sz = (pl.scorez || {});
           pliegScoreZ = [
@@ -1642,13 +1659,30 @@
         }
       }
 
-      masses = masses || [38.93, 17.83, 8.26, 8.78, 3.71];
-      perimeters = perimeters || [34.70, 38.50, 28.40, 101.50, 80.00, 61.00, 57.00, 36.70];
-      perimScoreZ = perimScoreZ || [3.07, 3.52, 1.93, 2.26, 1.47, 0.95, 0.83, 0.33];
-      pliegues = pliegues || [10.00, 10.50, 12.50, 19.50, 11.00, 9.00];
-      pliegScoreZ = pliegScoreZ || [-1.25, -1.36, -0.70, -0.81, -1.95, -1.54];
-
       // Mass bar
+      if (!masses) {
+        showEmptyState('massBarChart', 'Sin datos de masas corporales. Agrega un informe ISAK.');
+      } else {
+        clearEmptyState('massBarChart');
+      }
+      // Perimeters
+      if (!perimeters) {
+        showEmptyState('perimeterChart', 'Sin datos de perimetros. Agrega un informe ISAK.');
+      } else {
+        clearEmptyState('perimeterChart');
+      }
+      // Pliegues
+      if (!pliegues) {
+        showEmptyState('plieguesChart', 'Sin datos de pliegues cutaneos. Agrega un informe ISAK.');
+      } else {
+        clearEmptyState('plieguesChart');
+      }
+
+      if (!masses) {
+        showEmptyState('bodyPieChart2', 'Sin datos de composicion.');
+        return;
+      }
+
       charts.massBar = new Chart(document.getElementById('massBarChart'), {
         type: 'bar',
         data: {
@@ -1673,6 +1707,7 @@
       buildBodyPieChart('bodyPieChart2', [masses[0], masses[1], masses[3], masses[2], masses[4]]);
 
       // Perimeters with score-z
+      if (!perimeters) return;
       charts.perimeter = new Chart(document.getElementById('perimeterChart'), {
         type: 'bar',
         data: {
@@ -1715,6 +1750,7 @@
       });
 
       // Pliegues
+      if (!pliegues) return;
       charts.pliegues = new Chart(document.getElementById('plieguesChart'), {
         type: 'bar',
         data: {
@@ -1759,21 +1795,18 @@
 
     // ===== INIT =====
     window.addEventListener('load', async () => {
-      // Intentar cargar datos del servidor
       const connected = await loadAPIData();
 
+      let gymReal = null, runReal = null, antroReal = null;
+
       if (connected && API_DATA) {
-        // --- DATOS REALES DEL SERVIDOR ---
-        const gymReal = processGymData(API_DATA.gimnasio);
-        const runReal = processRunningData(API_DATA.running);
-        const antroReal = processAntroData(API_DATA.antropometria);
+        gymReal = processGymData(API_DATA.gimnasio);
+        runReal = processRunningData(API_DATA.running);
+        antroReal = processAntroData(API_DATA.antropometria);
 
-        // Si hay datos de gimnasio reales, reemplazar el gymData hardcodeado
+        // --- GIMNASIO ---
         if (gymReal && gymReal.weeks.length > 0) {
-          // Reconstruir gymData.weeks con las semanas reales
-          gymData.weeks = gymReal.weeks.map((w, i) => `SEMANA ${i + 1} · ${w}`);
-
-          // Reconstruir gymData.exercises con datos reales
+          gymData.weeks = gymReal.weeks.map((w, i) => 'SEMANA ' + (i + 1) + ' \u00B7 ' + w);
           gymData.exercises = {};
           gymReal.weeks.forEach((weekKey, wi) => {
             const weekExs = gymReal.byWeek[weekKey] || {};
@@ -1782,64 +1815,80 @@
                 gymData.exercises[exName] = {
                   day: exData.day,
                   group: exData.group.toUpperCase(),
-                  weights: [0, 0, 0],
-                  reps: [[0], [0], [0]]
+                  weights: new Array(gymReal.weeks.length).fill(0),
+                  reps: gymReal.weeks.map(() => [0])
                 };
               }
-              const repsArr = exData.series.map(s => s.reps);
-              const maxWeight = Math.max(...exData.series.map(s => s.peso));
-              gymData.exercises[exName].reps[wi] = repsArr;
-              gymData.exercises[exName].weights[wi] = maxWeight;
+              gymData.exercises[exName].reps[wi] = exData.series.map(s => s.reps);
+              gymData.exercises[exName].weights[wi] = Math.max(...exData.series.map(s => s.peso));
             });
           });
 
-          // Actualizar week selector con semanas reales
-          const ws = document.querySelector('.week-selector');
+          // Week selector
+          const ws = document.getElementById('week-selector');
           ws.innerHTML = gymData.weeks.map((w, i) =>
-            `<button class="week-btn ${i === 0 ? 'active' : ''}" onclick="selectWeek(this,${i})">${w}</button>`
+            '<button class="week-btn ' + (i === 0 ? 'active' : '') + '" onclick="selectWeek(this,' + i + ')">' + w + '</button>'
           ).join('');
+
+          // Overview stats
+          updateStat('ov-stat-weeks', gymReal.weeks.length);
+          const uniqueEx = new Set();
+          gymReal.weeks.forEach(wk => {
+            Object.keys(gymReal.byWeek[wk] || {}).forEach(ex => uniqueEx.add(ex));
+          });
+          updateStat('ov-stat-exercises', uniqueEx.size);
+          const lastWeek = gymReal.byWeek[gymReal.weeks[gymReal.weeks.length - 1]] || {};
+          const days = new Set(Object.values(lastWeek).map(e => e.day));
+          updateStat('ov-stat-days', days.size);
+
+          // Gym subtitle
+          const gymSub = document.getElementById('gym-subtitle');
+          if (gymSub) gymSub.textContent = gymReal.weeks.length + ' SEMANAS \u00B7 FUERZA + HIPERTROFIA';
         }
 
-        // Actualizar stats de running si hay datos reales
+        // --- RUNNING ---
         if (runReal && runReal.length > 0) {
           const totalDist = runReal.reduce((s, r) => s + r.distancia, 0).toFixed(1);
           const avgPace = runReal.reduce((s, r) => s + r.pace, 0) / runReal.length;
           const avgHR = Math.round(runReal.reduce((s, r) => s + r.fc_prom, 0) / runReal.length);
-          const runCount = runReal.length;
 
-          // Actualizar stat cards de running
-          const runStats = document.querySelectorAll('#tab-running .stat-card');
-          if (runStats[0]) { runStats[0].querySelector('.stat-value').textContent = totalDist; runStats[0].querySelector('.stat-unit').textContent = 'KM'; }
-          if (runStats[1]) { const m = Math.floor(avgPace); const s = Math.round((avgPace-m)*60); runStats[1].querySelector('.stat-value').textContent = m+':'+String(s).padStart(2,'0'); }
-          if (runStats[2]) runStats[2].querySelector('.stat-value').textContent = avgHR;
-          if (runStats[3]) runStats[3].querySelector('.stat-value').textContent = runCount;
+          updateStat('run-stat-dist', totalDist);
+          const m = Math.floor(avgPace); const s = Math.round((avgPace - m) * 60);
+          updateStat('run-stat-pace', m + ':' + String(s).padStart(2, '0'));
+          updateStat('run-stat-hr', avgHR);
+          updateStat('run-stat-count', runReal.length);
 
-          // Actualizar la lista de actividades
           updateRunningActivityList(runReal);
 
-          // Actualizar subtítulo
           const runSub = document.querySelector('#tab-running .section-subtitle');
           if (runSub) runSub.textContent = 'DATOS DE GARMIN CONNECT';
 
-          // Ocultar la tarjeta de aviso de Garmin
           const garminNotice = document.getElementById('garmin-notice-card');
           if (garminNotice) garminNotice.style.display = 'none';
         }
 
-        // Actualizar stats de antropometría si hay datos reales
+        // --- ANTROPOMETRIA ---
         if (antroReal && antroReal.length > 0) {
           const last = antroReal[antroReal.length - 1];
-          // Buscar y actualizar stat cards de composición corporal
-          const bodyStats = document.querySelectorAll('#tab-body .stat-card');
-          if (bodyStats[0]) bodyStats[0].querySelector('.stat-value').textContent = last.peso.toFixed(1);
-          if (bodyStats[1]) bodyStats[1].querySelector('.stat-value').textContent = last.muscular.toFixed(2);
-          if (bodyStats[2]) bodyStats[2].querySelector('.stat-value').textContent = last.adiposa.toFixed(2);
-          if (bodyStats[3]) bodyStats[3].querySelector('.stat-value').textContent = last.osea.toFixed(2);
-          if (bodyStats[4]) bodyStats[4].querySelector('.stat-value').textContent = Math.round(last.metabolismo);
-          if (bodyStats[5]) bodyStats[5].querySelector('.stat-value').textContent = Math.round(last.gasto);
 
-          // Actualizar subtítulo con fecha real del PDF
-          const bodySub = document.querySelector('#tab-body .section-subtitle');
+          updateStat('body-stat-peso', last.peso.toFixed(1));
+          updateStat('body-stat-muscular', last.muscular.toFixed(2));
+          updateStat('body-stat-adiposa', last.adiposa.toFixed(2));
+          updateStat('body-stat-osea', last.osea.toFixed(2));
+          updateStat('body-stat-metab', Math.round(last.metabolismo));
+          updateStat('body-stat-gasto', Math.round(last.gasto));
+
+          // Overview body stats
+          updateStat('ov-stat-peso', last.peso.toFixed(1));
+          updateStat('ov-stat-muscular', last.muscular.toFixed(1));
+          updateStat('ov-stat-adiposa', last.adiposa.toFixed(1));
+
+          // Header info
+          const headerInfo = document.getElementById('header-info');
+          if (headerInfo) headerInfo.textContent = 'MANUEL LOIACONO \u00B7 ' + last.peso.toFixed(1) + ' KG';
+
+          // Body subtitle
+          const bodySub = document.getElementById('body-subtitle');
           if (bodySub && last.fecha) {
             const parts = last.fecha.split('-');
             const fechaFmt = parts[2] + '/' + parts[1] + '/' + parts[0];
@@ -1848,21 +1897,21 @@
         }
       }
 
-      // Preparar datos para los chart builders
-      const runData = (API_DATA && API_DATA.running && API_DATA.running.length > 0)
-        ? processRunningData(API_DATA.running) : null;
+      // Preparar datos para charts (null si no hay datos = empty state)
+      const runData = runReal;
       const antroRaw = (API_DATA && API_DATA.antropometria && API_DATA.antropometria.length > 0)
         ? API_DATA.antropometria : null;
       const massData = antroRaw ? (() => {
         const last = antroRaw[antroRaw.length - 1];
-        return [
-          parseFloat(last.masa_muscular_kg) || 38.93, parseFloat(last.masa_adiposa_kg) || 17.83,
-          parseFloat(last.masa_osea_kg) || 8.78, parseFloat(last.masa_residual_kg) || 8.26,
-          parseFloat(last.masa_piel_kg) || 3.71
+        const m = [
+          parseFloat(last.masa_muscular_kg) || 0, parseFloat(last.masa_adiposa_kg) || 0,
+          parseFloat(last.masa_osea_kg) || 0, parseFloat(last.masa_residual_kg) || 0,
+          parseFloat(last.masa_piel_kg) || 0
         ];
+        return m.some(v => v > 0) ? m : null;
       })() : null;
 
-      // Construir todos los gráficos (con datos reales si los hay, o con fallback)
+      // Construir todos los graficos (cada uno maneja su empty state)
       buildOverviewVolChart();
       buildBodyPieChart('bodyPieChart', massData);
       buildOverviewProgressChart();
@@ -1873,17 +1922,17 @@
       buildBodyCharts(antroRaw);
     });
 
-    // Helper: actualizar la lista de últimas actividades de running
+    // Helper: actualizar lista de actividades de running
     function updateRunningActivityList(runData) {
-      const cards = document.querySelectorAll('#tab-running .chart-card');
-      // Buscar la card que tiene "ÚLTIMAS ACTIVIDADES"
-      let runCard = null;
-      cards.forEach(c => { if (c.textContent.includes('LTIMAS ACTIVIDADES')) runCard = c; });
+      const runCard = document.getElementById('running-activities-card');
       if (!runCard) return;
 
-      const title = runCard.querySelector('.chart-title');
-      const titleHTML = title ? title.outerHTML.replace('(EJEMPLO)', '') : '';
-      runCard.innerHTML = titleHTML;
+      // Remove empty state
+      const emptyState = document.getElementById('running-activities-empty');
+      if (emptyState) emptyState.remove();
+
+      // Remove existing run-rows
+      runCard.querySelectorAll('.run-row').forEach(r => r.remove());
 
       const recent = runData.slice(-8).reverse();
       recent.forEach(r => {
@@ -1894,7 +1943,7 @@
         const durSec = Math.round((r.tiempo - durMin) * 60);
         const row = document.createElement('div');
         row.className = 'run-row';
-        row.innerHTML = `<div><div class="run-date">${dateStr}</div><div class="run-pace">Pace ${paceMin}:${String(paceSec).padStart(2,'0')} · FC ${r.fc_prom}</div></div><div class="run-dist">${r.distancia.toFixed(1)} KM</div><div class="run-hr">${durMin}:${String(durSec).padStart(2,'0')} min</div>`;
+        row.innerHTML = `<div><div class="run-date">${dateStr}</div><div class="run-pace">Pace ${paceMin}:${String(paceSec).padStart(2, '0')} · FC ${r.fc_prom}</div></div><div class="run-dist">${r.distancia.toFixed(1)} KM</div><div class="run-hr">${durMin}:${String(durSec).padStart(2, '0')} min</div>`;
         runCard.appendChild(row);
       });
     }
