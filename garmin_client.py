@@ -62,6 +62,75 @@ def fetch_running_activities(days_back: int = 180) -> list[dict]:
     return sorted(results, key=lambda r: r["fecha"])
 
 
+def fetch_sleep_data(days_back: int = 28) -> list[dict]:
+    """
+    Descarga datos de sueño de los últimos N días.
+    Retorna lista de dicts: {fecha, duracion_hs, score, rem_min, deep_min, light_min, hrv_noche}
+    """
+    api = get_client()
+    if api is None:
+        return []
+
+    results = []
+    end_date = datetime.now()
+    start_date = end_date - timedelta(days=days_back)
+    current = start_date
+    errors = 0
+
+    while current <= end_date:
+        fecha_str = current.strftime("%Y-%m-%d")
+        try:
+            sleep = api.get_sleep_data(fecha_str)
+            transformed = _transform_sleep(sleep, fecha_str)
+            if transformed:
+                results.append(transformed)
+        except Exception:
+            errors += 1
+            if errors >= 3:
+                break  # Stop early if Garmin API is failing
+        current += timedelta(days=1)
+
+    return sorted(results, key=lambda r: r["fecha"])
+
+
+def _transform_sleep(sleep_data: dict, fecha: str) -> dict | None:
+    """Transforma datos de sueño de Garmin al formato del dashboard."""
+    if not sleep_data:
+        return None
+
+    daily = sleep_data.get("dailySleepDTO", {})
+    if not daily:
+        return None
+
+    # Duración total en segundos
+    duration_sec = daily.get("sleepTimeSeconds", 0) or 0
+    if duration_sec <= 0:
+        return None
+
+    duration_hs = round(duration_sec / 3600, 1)
+
+    # Sleep score (Garmin calculated)
+    score = daily.get("sleepScores", {}).get("overall", {}).get("value", 0) or 0
+
+    # Fases en segundos → minutos
+    rem_sec = daily.get("remSleepSeconds", 0) or 0
+    deep_sec = daily.get("deepSleepSeconds", 0) or 0
+    light_sec = daily.get("lightSleepSeconds", 0) or 0
+
+    # HRV nocturno (si disponible)
+    hrv = daily.get("averageHRV", 0) or 0
+
+    return {
+        "fecha": fecha,
+        "duracion_hs": str(duration_hs),
+        "score": str(score),
+        "rem_min": str(round(rem_sec / 60)),
+        "deep_min": str(round(deep_sec / 60)),
+        "light_min": str(round(light_sec / 60)),
+        "hrv_noche": str(hrv),
+    }
+
+
 def _transform_activity(act: dict) -> dict | None:
     """Transforma una actividad de Garmin al formato del dashboard."""
     # Garmin retorna distancia en metros, duración en segundos

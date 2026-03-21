@@ -144,6 +144,359 @@ def api_antropometria():
     except Exception:
         return jsonify({"ok": True, "data": [], "source": "none"})
 
+SCORE_WEIGHTS = {
+    "gimnasio":    0.40,
+    "running":     0.35,
+    "composicion": 0.25,
+}
+
+SCORE_WEIGHTS_WITH_SLEEP = {
+    "gimnasio":    0.35,
+    "running":     0.30,
+    "composicion": 0.20,
+    "sueno":       0.15,
+}
+
+
+@app.route("/api/score")
+def api_score():
+    """
+    Score semanal de rendimiento (1-100).
+    Gimnasio: volumen actual vs promedio 4 semanas. 100 = al promedio.
+    Running: pace actual vs histórico. Menor pace = mayor score.
+    Composición: ratio musculo/grasa interpolado.
+    Sueño: promedio de sleep score Garmin de la semana.
+    """
+    from datetime import timedelta
+
+    # --- Gym score ---
+    gym_score = None
+    gym_weekly_vols = {}
+    try:
+        rows = read_sheet(SHEET_GIMNASIO)
+        for r in rows:
+            fecha = r.get("fecha", "")
+            if not fecha:
+                continue
+            reps = int(r.get("reps") or 0)
+            peso = float(r.get("peso_kg") or 0)
+            d = datetime.strptime(fecha, "%Y-%m-%d")
+            week_start = d - timedelta(days=d.weekday())
+            wk = week_start.strftime("%Y-%m-%d")
+            gym_weekly_vols[wk] = gym_weekly_vols.get(wk, 0) + (reps * peso)
+
+        if gym_weekly_vols:
+            sorted_weeks = sorted(gym_weekly_vols.keys())
+            current_vol = gym_weekly_vols[sorted_weeks[-1]]
+            recent = sorted_weeks[-5:-1] if len(sorted_weeks) > 1 else sorted_weeks
+            avg_vol = sum(gym_weekly_vols[w] for w in recent) / len(recent) if recent else current_vol
+            if avg_vol > 0:
+                ratio = current_vol / avg_vol
+                gym_score = max(0, min(100, round(ratio * 100)))
+    except Exception as e:
+        print(f"[SCORE] Gym error: {e}")
+
+    # --- Running score ---
+    run_score = None
+    if GARMIN_AVAILABLE and garmin_client.is_configured():
+        try:
+            activities = garmin_client.fetch_running_activities(days_back=180)
+            if activities:
+                paces = [float(a["pace_min_km"]) for a in activities if float(a.get("pace_min_km", 0)) > 0]
+                if len(paces) >= 2:
+                    avg_pace = sum(paces) / len(paces)
+                    current_pace = sum(paces[-3:]) / len(paces[-3:])
+                    if avg_pace > 0:
+                        ratio = avg_pace / current_pace  # lower pace = higher ratio
+                        run_score = max(0, min(100, round(ratio * 100)))
+        except Exception as e:
+            print(f"[SCORE] Run error: {e}")
+
+    # --- Body comp score ---
+    comp_score = None
+    if ANTRO_PARSER_AVAILABLE:
+        try:
+            antro_data = antro_parser.parse_all_pdfs()
+            if antro_data:
+                last = antro_data[-1]
+                muscular = float(last.get("masa_muscular_kg", 0) or 0)
+                adiposa = float(last.get("masa_adiposa_kg", 0) or 0)
+                if adiposa > 0:
+                    ratio = muscular / adiposa
+                    # ratio 2.0 = score 70, ratio 2.5 = 85, ratio 3.0 = 100
+                    comp_score = max(0, min(100, round((ratio - 1.0) * 50)))
+        except Exception as e:
+            print(f"[SCORE] Body error: {e}")
+
+    # --- Sleep score ---
+    sleep_score = None
+    if GARMIN_AVAILABLE and garmin_client.is_configured():
+        try:
+            sleep_data = garmin_client.fetch_sleep_data(days_back=7)
+            if sleep_data:
+                scores = [int(s.get("score", 0) or 0) for s in sleep_data if int(s.get("score", 0) or 0) > 0]
+                if scores:
+                    sleep_score = round(sum(scores) / len(scores))
+        except Exception as e:
+            print(f"[SCORE] Sleep error: {e}")
+
+    # --- Weighted calculation ---
+    has_sleep = sleep_score is not None
+    weights = SCORE_WEIGHTS_WITH_SLEEP if has_sleep else SCORE_WEIGHTS
+
+    components = {}
+    total_weight = 0
+    weighted_sum = 0
+
+    if gym_score is not None:
+        w = weights["gimnasio"]
+        components["gimnasio"] = {"score": gym_score, "peso": w}
+        weighted_sum += gym_score * w
+        total_weight += w
+
+    if run_score is not None:
+        w = weights["running"]
+        components["running"] = {"score": run_score, "peso": w}
+        weighted_sum += run_score * w
+        total_weight += w
+
+    if comp_score is not None:
+        w = weights["composicion"]
+        components["composicion"] = {"score": comp_score, "peso": w}
+        weighted_sum += comp_score * w
+        total_weight += w
+
+    if has_sleep:
+        w = weights["sueno"]
+        components["sueno"] = {"score": sleep_score, "peso": w}
+        weighted_sum += sleep_score * w
+        total_weight += w
+
+    # Redistribute weights if some sources unavailable
+    score_actual = round(weighted_sum / total_weight) if total_weight > 0 else None
+
+    # Historical scores (from gym weekly volumes as proxy)
+    historico = []
+    if gym_weekly_vols:
+        sorted_weeks = sorted(gym_weekly_vols.keys())
+        for i, wk in enumerate(sorted_weeks):
+            vol = gym_weekly_vols[wk]
+            recent = sorted_weeks[max(0, i - 4):i] if i > 0 else [wk]
+            avg = sum(gym_weekly_vols[w] for w in recent) / len(recent)
+            wk_score = max(0, min(100, round((vol / avg) * 100))) if avg > 0 else 50
+            historico.append({"semana": wk, "score": wk_score})
+
+    # Delta vs last week
+    delta = None
+    if len(historico) >= 2:
+        delta = historico[-1]["score"] - historico[-2]["score"]
+
+    return jsonify({
+        "ok": score_actual is not None,
+        "score_actual": score_actual,
+        "delta": delta,
+        "componentes": components,
+        "historico": historico[-12:],  # last 12 weeks
+    })
+
+
+@app.route("/api/ejercicio/<nombre>")
+def api_ejercicio(nombre):
+    """
+    Historial completo de un ejercicio: peso máx por sesión, volumen semanal,
+    1RM estimado (Epley), PRs, tendencia 4 semanas, alerta estancamiento.
+    """
+    try:
+        rows = read_sheet(SHEET_GIMNASIO)
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+    nombre_upper = nombre.strip().upper()
+    filtered = [r for r in rows if (r.get("ejercicio") or "").strip().upper() == nombre_upper]
+
+    if not filtered:
+        return jsonify({"ok": False, "error": f"Ejercicio '{nombre}' no encontrado"}), 404
+
+    grupo = filtered[0].get("grupo_muscular", "OTRO").upper()
+
+    # Agrupar por fecha (sesión)
+    sesiones = {}
+    for r in filtered:
+        fecha = r.get("fecha", "")
+        if not fecha:
+            continue
+        if fecha not in sesiones:
+            sesiones[fecha] = []
+        reps = int(r.get("reps") or 0)
+        peso = float(r.get("peso_kg") or 0)
+        sesiones[fecha].append({"reps": reps, "peso": peso})
+
+    # Calcular historial por sesión
+    historico = []
+    all_sets = []
+    for fecha in sorted(sesiones.keys()):
+        sets = sesiones[fecha]
+        peso_max = max(s["peso"] for s in sets)
+        reps_en_max = max(s["reps"] for s in sets if s["peso"] == peso_max)
+        volumen = sum(s["reps"] * s["peso"] for s in sets)
+        rm_estimado = round(peso_max * (1 + reps_en_max / 30), 1) if peso_max > 0 else 0
+
+        # Semana ISO
+        from datetime import datetime as dt
+        d = dt.strptime(fecha, "%Y-%m-%d")
+        week_start = d - __import__('datetime').timedelta(days=d.weekday())
+        semana = week_start.strftime("%Y-%m-%d")
+
+        historico.append({
+            "fecha": fecha,
+            "semana": semana,
+            "peso_max": peso_max,
+            "reps_en_max": reps_en_max,
+            "volumen": round(volumen),
+            "1rm_estimado": rm_estimado,
+        })
+
+        for s in sets:
+            all_sets.append({"fecha": fecha, "reps": s["reps"], "peso": s["peso"],
+                             "vol": s["reps"] * s["peso"]})
+
+    # PRs
+    pr_peso_set = max(all_sets, key=lambda s: s["peso"]) if all_sets else None
+    pr_vol_set = max(all_sets, key=lambda s: s["vol"]) if all_sets else None
+    top5 = sorted(all_sets, key=lambda s: s["vol"], reverse=True)[:5]
+
+    # Tendencia 4 semanas
+    tendencia = ""
+    estancado = False
+    if len(historico) >= 2:
+        recent = historico[-1]["peso_max"]
+        idx_4sem = max(0, len(historico) - 5)
+        old = historico[idx_4sem]["peso_max"]
+        diff = recent - old
+        tendencia = f"+{diff}kg" if diff >= 0 else f"{diff}kg"
+
+        # Estancamiento: mismo peso_max en últimas 3+ sesiones
+        if len(historico) >= 3:
+            last3 = [h["peso_max"] for h in historico[-3:]]
+            estancado = len(set(last3)) == 1
+
+    return jsonify({
+        "ok": True,
+        "ejercicio": nombre_upper,
+        "grupo": grupo,
+        "historico": historico,
+        "pr_peso": {"valor": pr_peso_set["peso"], "fecha": pr_peso_set["fecha"]} if pr_peso_set else None,
+        "pr_volumen": {"valor": round(pr_vol_set["vol"]), "fecha": pr_vol_set["fecha"]} if pr_vol_set else None,
+        "top5_sets": top5,
+        "tendencia_4sem": tendencia,
+        "estancado": estancado,
+    })
+
+@app.route("/api/correlaciones")
+def api_correlaciones():
+    """
+    Cruza datos de gym, running y antropometría para encontrar correlaciones.
+    Correlation 1: Running km/semana vs Gym volumen/semana
+    Correlation 2: Masa adiposa vs pace promedio
+    Correlation 3: Volumen semanal vs FC reposo (si disponible)
+    """
+    from datetime import timedelta
+
+    result = {
+        "running_vs_gym": [],
+        "composicion_vs_pace": [],
+        "volumen_vs_fc_reposo": [],
+    }
+
+    # --- Gym weekly volumes ---
+    gym_weekly = {}
+    try:
+        rows = read_sheet(SHEET_GIMNASIO)
+        for r in rows:
+            fecha = r.get("fecha", "")
+            if not fecha:
+                continue
+            reps = int(r.get("reps") or 0)
+            peso = float(r.get("peso_kg") or 0)
+            d = datetime.strptime(fecha, "%Y-%m-%d")
+            week_start = d - timedelta(days=d.weekday())
+            wk = week_start.strftime("%Y-%m-%d")
+            gym_weekly[wk] = gym_weekly.get(wk, 0) + (reps * peso)
+    except Exception as e:
+        print(f"[CORR] Gym error: {e}")
+
+    # --- Running weekly data ---
+    run_weekly = {}
+    run_all_paces = []
+    if GARMIN_AVAILABLE and garmin_client.is_configured():
+        try:
+            activities = garmin_client.fetch_running_activities(days_back=180)
+            for a in activities:
+                fecha = a.get("fecha", "")
+                if not fecha:
+                    continue
+                dist = float(a.get("distancia_km", 0) or 0)
+                pace = float(a.get("pace_min_km", 0) or 0)
+                d = datetime.strptime(fecha, "%Y-%m-%d")
+                week_start = d - timedelta(days=d.weekday())
+                wk = week_start.strftime("%Y-%m-%d")
+                if wk not in run_weekly:
+                    run_weekly[wk] = {"dist": 0, "paces": []}
+                run_weekly[wk]["dist"] += dist
+                if pace > 0:
+                    run_weekly[wk]["paces"].append(pace)
+                    run_all_paces.append({"fecha": fecha, "pace": pace})
+        except Exception as e:
+            print(f"[CORR] Run error: {e}")
+
+    # Correlation 1: Running vs Gym
+    common_weeks = set(gym_weekly.keys()) & set(run_weekly.keys())
+    for wk in sorted(common_weeks):
+        result["running_vs_gym"].append({
+            "semana": wk,
+            "km_running": round(run_weekly[wk]["dist"], 1),
+            "vol_gym": round(gym_weekly[wk]),
+        })
+
+    # Correlation 2: Body comp vs pace
+    if ANTRO_PARSER_AVAILABLE and run_all_paces:
+        try:
+            antro = antro_parser.parse_all_pdfs()
+            for measurement in (antro or []):
+                fecha_m = measurement.get("fecha", "")
+                adiposa = float(measurement.get("masa_adiposa_kg", 0) or 0)
+                if not fecha_m or adiposa <= 0:
+                    continue
+                # Find average pace in the week of this measurement
+                d = datetime.strptime(fecha_m, "%Y-%m-%d")
+                week_start = d - timedelta(days=d.weekday())
+                wk = week_start.strftime("%Y-%m-%d")
+                if wk in run_weekly and run_weekly[wk]["paces"]:
+                    avg_pace = sum(run_weekly[wk]["paces"]) / len(run_weekly[wk]["paces"])
+                    result["composicion_vs_pace"].append({
+                        "fecha": fecha_m,
+                        "masa_adiposa": adiposa,
+                        "pace_prom_semana": round(avg_pace, 2),
+                    })
+        except Exception as e:
+            print(f"[CORR] Body vs pace error: {e}")
+
+    # Correlation 3: Volume vs resting HR (placeholder — requires Garmin daily stats)
+    # Not yet available in garmin_client, included for API completeness
+
+    return jsonify({"ok": True, "data": result})
+
+@app.route("/api/sueno")
+def api_sueno():
+    """Datos de sueño desde Garmin Connect."""
+    if GARMIN_AVAILABLE and garmin_client.is_configured():
+        try:
+            data = garmin_client.fetch_sleep_data(days_back=28)
+            return jsonify({"ok": True, "data": data, "source": "garmin"})
+        except Exception as e:
+            print(f"[SLEEP] Error: {e}")
+    return jsonify({"ok": True, "data": [], "source": "none"})
+
 @app.route("/api/all")
 def api_all():
     """Endpoint que devuelve todo junto para cargar el dashboard de una sola vez."""
@@ -206,6 +559,19 @@ def api_all():
         except Exception:
             result["antropometria"] = []
             sources["antropometria"] = "none"
+
+    # Sueño: solo desde Garmin (7 días en /api/all para velocidad, 28 en /api/sueno)
+    if GARMIN_AVAILABLE and garmin_client.is_configured():
+        try:
+            data = garmin_client.fetch_sleep_data(days_back=7)
+            result["sueno"] = data
+            sources["sueno"] = "garmin" if data else "none"
+        except Exception:
+            result["sueno"] = []
+            sources["sueno"] = "none"
+    else:
+        result["sueno"] = []
+        sources["sueno"] = "none"
 
     return jsonify({
         "ok": True,
