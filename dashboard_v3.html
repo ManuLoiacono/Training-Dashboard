@@ -798,6 +798,376 @@
     .prog-pr-table tr:first-child td {
       color: var(--accent);
     }
+
+    /* ─────── ENTRENO TAB ─────── */
+    .entreno-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-bottom: 20px;
+    }
+    .entreno-header .session-info {
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .entreno-header .session-info strong {
+      color: var(--accent);
+      font-size: 16px;
+    }
+    .entreno-timer {
+      font-family: 'DM Mono', monospace;
+      font-size: 22px;
+      color: var(--accent2);
+    }
+
+    /* Step 1: start session */
+    .entreno-start {
+      text-align: center;
+      padding: 40px 0;
+    }
+    .entreno-start .date-input {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 14px;
+      padding: 12px 16px;
+      text-align: center;
+      margin-bottom: 24px;
+    }
+    .day-selector {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      margin-bottom: 28px;
+    }
+    .day-btn {
+      background: var(--surface);
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      color: var(--muted);
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 22px;
+      letter-spacing: 2px;
+      padding: 16px 28px;
+      min-height: 56px;
+      min-width: 100px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .day-btn:hover { border-color: var(--accent); color: var(--text); }
+    .day-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(200,241,53,0.08); }
+
+    .btn-start-session {
+      background: var(--accent);
+      color: #0A0A0A;
+      border: none;
+      border-radius: 12px;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 24px;
+      letter-spacing: 3px;
+      padding: 18px 0;
+      width: 100%;
+      max-width: 400px;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .btn-start-session:hover { opacity: 0.85; }
+    .btn-start-session:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* Step 2: exercise list + FAB */
+    .entreno-exercises {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 80px;
+    }
+    .exercise-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 20px;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    .exercise-card:hover { border-color: var(--accent); }
+    .exercise-card .ex-name {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 18px;
+      letter-spacing: 1px;
+      color: var(--text);
+    }
+    .exercise-card .ex-meta {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+    .exercise-card .ex-sets-chips {
+      display: flex;
+      gap: 6px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+    .set-chip {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 4px 8px;
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: var(--accent);
+    }
+
+    .fab-add {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #0A0A0A;
+      border: none;
+      font-size: 32px;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(200,241,53,0.3);
+      z-index: 90;
+      display: none;
+      transition: transform 0.2s;
+    }
+    .fab-add:hover { transform: scale(1.1); }
+
+    /* Exercise search modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.8);
+      z-index: 200;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      width: 90%;
+      max-width: 480px;
+      max-height: 80vh;
+      overflow-y: auto;
+      padding: 24px;
+    }
+    .modal-box h3 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 22px;
+      letter-spacing: 2px;
+      color: var(--accent);
+      margin-bottom: 16px;
+    }
+    .modal-search {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+    }
+    .modal-search:focus { outline: none; border-color: var(--accent); }
+    .modal-group-title {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 2px;
+      color: var(--accent2);
+      margin: 16px 0 8px;
+      text-transform: uppercase;
+    }
+    .modal-exercise-item {
+      padding: 12px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      color: var(--text);
+      font-size: 14px;
+      transition: background 0.15s;
+    }
+    .modal-exercise-item:hover { background: var(--surface2); }
+    .modal-add-new {
+      color: var(--accent);
+      border-top: 1px solid var(--border);
+      margin-top: 12px;
+      padding-top: 12px;
+      cursor: pointer;
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+    }
+    .modal-add-new:hover { text-decoration: underline; }
+
+    /* Step 3: Log set screen */
+    .set-logger {
+      display: none;
+      text-align: center;
+      padding: 20px 0;
+    }
+    .set-logger.active { display: block; }
+    .set-logger .sl-exercise-name {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 28px;
+      letter-spacing: 2px;
+      color: var(--text);
+    }
+    .set-logger .sl-last-info {
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 4px;
+      margin-bottom: 24px;
+    }
+    .input-group {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .input-group label {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 2px;
+      color: var(--muted);
+      display: block;
+      margin-bottom: 10px;
+      text-transform: uppercase;
+    }
+    .input-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+    }
+    .step-btn {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--accent);
+      font-family: 'DM Mono', monospace;
+      font-size: 16px;
+      width: 56px;
+      height: 56px;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .step-btn:hover { border-color: var(--accent); background: rgba(200,241,53,0.08); }
+    .step-btn:active { transform: scale(0.95); }
+    .num-input {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--accent);
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 36px;
+      text-align: center;
+      width: 100px;
+      padding: 8px;
+    }
+    .num-input:focus { outline: none; border-color: var(--accent); }
+
+    .sl-chips {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin: 16px 0;
+    }
+    .btn-save-set {
+      background: var(--accent);
+      color: #0A0A0A;
+      border: none;
+      border-radius: 12px;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 20px;
+      letter-spacing: 2px;
+      padding: 16px 0;
+      width: 100%;
+      cursor: pointer;
+      margin-bottom: 12px;
+      transition: opacity 0.2s;
+    }
+    .btn-save-set:hover { opacity: 0.85; }
+    .btn-finish-exercise {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      letter-spacing: 1px;
+      padding: 10px 0;
+      width: 100%;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-finish-exercise:hover { border-color: var(--accent); color: var(--text); }
+
+    /* Step 4: session summary */
+    .session-summary {
+      display: none;
+      text-align: center;
+      padding: 40px 0;
+    }
+    .session-summary.active { display: block; }
+    .summary-stat {
+      display: inline-block;
+      margin: 0 20px;
+      text-align: center;
+    }
+    .summary-stat .val {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 36px;
+      color: var(--accent);
+    }
+    .summary-stat .lbl {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .btn-finish-session {
+      background: var(--accent);
+      color: #0A0A0A;
+      border: none;
+      border-radius: 12px;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 20px;
+      letter-spacing: 2px;
+      padding: 16px 40px;
+      cursor: pointer;
+      margin-top: 32px;
+      transition: opacity 0.2s;
+    }
+    .btn-finish-session:hover { opacity: 0.85; }
+
+    @media (max-width: 768px) {
+      .step-btn { width: 56px; height: 56px; font-size: 18px; }
+      .num-input { font-size: 32px; width: 90px; }
+      .day-btn { padding: 14px 20px; font-size: 20px; min-width: 80px; }
+      .modal-box { width: 95%; max-height: 90vh; padding: 16px; }
+      .fab-add { bottom: 16px; right: 16px; }
+    }
   </style>
 </head>
 
@@ -817,6 +1187,7 @@
     <button class="tab-btn" onclick="switchTab('gym')">GIMNASIO</button>
     <button class="tab-btn" onclick="switchTab('running')">RUNNING</button>
     <button class="tab-btn" onclick="switchTab('body')">COMPOSICIÓN</button>
+    <button class="tab-btn" onclick="switchTab('entreno')">ENTRENO</button>
     <button class="tab-btn" onclick="switchTab('sleep')">SUEÑO</button>
     <button class="tab-btn" onclick="switchTab('analysis')">ANÁLISIS</button>
   </nav>
@@ -1330,6 +1701,101 @@
       </div>
     </div>
 
+    <!-- =================== ENTRENO =================== -->
+    <div class="tab-panel" id="tab-entreno">
+      <div class="section-title">ENTRENO</div>
+
+      <!-- Step 1: Start session -->
+      <div id="entreno-step1" class="entreno-start">
+        <div class="section-subtitle" style="margin-bottom:20px;">NUEVA SESIÓN</div>
+        <input type="date" id="entreno-date" class="date-input"><br><br>
+        <div class="day-selector">
+          <button class="day-btn" onclick="selectDay(1, this)">DÍA 1</button>
+          <button class="day-btn" onclick="selectDay(2, this)">DÍA 2</button>
+          <button class="day-btn" onclick="selectDay(3, this)">DÍA 3</button>
+        </div>
+        <button class="btn-start-session" id="btn-start" onclick="startSession()" disabled>INICIAR SESIÓN</button>
+      </div>
+
+      <!-- Step 2: Active session -->
+      <div id="entreno-step2" style="display:none;">
+        <div class="entreno-header">
+          <div class="session-info">
+            <strong id="entreno-day-label">DÍA 1</strong>
+            <span id="entreno-date-label"></span>
+          </div>
+          <div class="entreno-timer" id="entreno-timer">00:00</div>
+          <button class="btn-finish-exercise" style="width:auto;padding:8px 16px;" onclick="showSummary()">FINALIZAR</button>
+        </div>
+        <div class="entreno-exercises" id="entreno-exercise-list"></div>
+      </div>
+
+      <!-- Set logger (step 3) -->
+      <div id="entreno-step3" class="set-logger">
+        <div class="sl-exercise-name" id="sl-exercise-name"></div>
+        <div class="sl-last-info" id="sl-last-info"></div>
+        <div class="input-group">
+          <label>PESO (kg)</label>
+          <div class="input-row">
+            <button class="step-btn" onclick="stepValue('sl-peso', -2.5)">−2.5</button>
+            <input type="number" inputmode="decimal" step="2.5" id="sl-peso" class="num-input" value="0">
+            <button class="step-btn" onclick="stepValue('sl-peso', 2.5)">+2.5</button>
+          </div>
+        </div>
+        <div class="input-group">
+          <label>REPS</label>
+          <div class="input-row">
+            <button class="step-btn" onclick="stepValue('sl-reps', -1)">−1</button>
+            <input type="number" inputmode="numeric" step="1" id="sl-reps" class="num-input" value="0">
+            <button class="step-btn" onclick="stepValue('sl-reps', 1)">+1</button>
+          </div>
+        </div>
+        <div class="sl-chips" id="sl-chips"></div>
+        <button class="btn-save-set" onclick="saveSet()">GUARDAR SERIE</button>
+        <button class="btn-finish-exercise" onclick="finishExercise()">TERMINAR EJERCICIO</button>
+      </div>
+
+      <!-- Step 4: Session summary -->
+      <div id="entreno-step4" class="session-summary">
+        <div class="section-title" style="color:var(--accent);margin-bottom:24px;">SESIÓN COMPLETA</div>
+        <div>
+          <div class="summary-stat"><div class="val" id="sum-exercises">0</div><div class="lbl">Ejercicios</div></div>
+          <div class="summary-stat"><div class="val" id="sum-sets">0</div><div class="lbl">Series</div></div>
+          <div class="summary-stat"><div class="val" id="sum-volume">0</div><div class="lbl">Kg totales</div></div>
+        </div>
+        <button class="btn-finish-session" onclick="endSession()">VOLVER AL OVERVIEW</button>
+      </div>
+    </div>
+
+    <!-- Exercise search modal -->
+    <div class="modal-overlay" id="exercise-modal">
+      <div class="modal-box">
+        <h3>ELEGIR EJERCICIO</h3>
+        <input type="text" class="modal-search" id="modal-search" placeholder="Buscar ejercicio..." oninput="filterExercises()">
+        <div id="modal-exercise-list"></div>
+        <div class="modal-add-new" onclick="showAddExercise()">+ Agregar nuevo ejercicio</div>
+        <div id="modal-add-form" style="display:none;margin-top:12px;">
+          <input type="text" class="modal-search" id="new-ex-nombre" placeholder="Nombre del ejercicio">
+          <select class="modal-search" id="new-ex-grupo" style="margin-top:8px;">
+            <option value="">Grupo muscular...</option>
+            <option value="PECHO">PECHO</option>
+            <option value="ESPALDA">ESPALDA</option>
+            <option value="HOMBROS">HOMBROS</option>
+            <option value="BICEPS">BICEPS</option>
+            <option value="TRICEPS">TRICEPS</option>
+            <option value="PIERNAS">PIERNAS</option>
+            <option value="CORE">CORE</option>
+            <option value="OTRO">OTRO</option>
+          </select>
+          <button class="btn-save-set" style="margin-top:12px;" onclick="addNewExercise()">AGREGAR</button>
+        </div>
+        <button class="btn-finish-exercise" style="margin-top:12px;" onclick="closeExerciseModal()">CANCELAR</button>
+      </div>
+    </div>
+
+    <!-- FAB button (only visible during active session) -->
+    <button class="fab-add" id="fab-add" onclick="openExerciseModal()">+</button>
+
   </main>
 
   <script>
@@ -1542,7 +2008,10 @@
       document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
       document.getElementById('tab-' + name).classList.add('active');
-      event.target.classList.add('active');
+      if (event && event.target) event.target.classList.add('active');
+      // Hide FAB when leaving entreno
+      const fab = document.getElementById('fab-add');
+      if (fab && name !== 'entreno') fab.style.display = 'none';
     }
 
     // ===== WEEK SELECTOR =====
@@ -2868,6 +3337,364 @@
         row.innerHTML = `<div><div class="run-date">${dateStr}</div><div class="run-pace">Pace ${paceMin}:${String(paceSec).padStart(2, '0')} · FC ${r.fc_prom}</div></div><div class="run-dist">${r.distancia.toFixed(1)} KM</div><div class="run-hr">${durMin}:${String(durSec).padStart(2, '0')} min</div>`;
         runCard.appendChild(row);
       });
+    }
+
+    // ===== ENTRENO TAB =====
+    let entrenoState = {
+      sesionId: null,
+      diaRutina: null,
+      fecha: null,
+      timerStart: null,
+      timerInterval: null,
+      currentExerciseId: null,
+      currentExerciseName: null,
+      sessionSets: [],     // all sets in this session: {ejercicio_id, ejercicio, reps, peso_kg, serie_id}
+      exerciseCatalog: [],  // from /api/gym/ejercicios
+    };
+
+    // Init date input to today
+    document.addEventListener('DOMContentLoaded', () => {
+      const dateInput = document.getElementById('entreno-date');
+      if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
+    });
+
+    function selectDay(day, btn) {
+      entrenoState.diaRutina = day;
+      document.querySelectorAll('.day-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('btn-start').disabled = false;
+    }
+
+    async function startSession() {
+      const fecha = document.getElementById('entreno-date').value;
+      if (!fecha || !entrenoState.diaRutina) return;
+
+      try {
+        const res = await fetch('/api/gym/sesiones', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ fecha, dia_rutina: entrenoState.diaRutina }),
+        });
+        const json = await res.json();
+        if (!json.ok) { alert(json.error); return; }
+
+        entrenoState.sesionId = json.data.id;
+        entrenoState.fecha = fecha;
+        entrenoState.sessionSets = [];
+
+        // Load exercise catalog
+        await loadExerciseCatalog();
+
+        // Switch to step 2
+        document.getElementById('entreno-step1').style.display = 'none';
+        document.getElementById('entreno-step2').style.display = 'block';
+        document.getElementById('fab-add').style.display = 'block';
+        document.getElementById('entreno-day-label').textContent = 'DÍA ' + entrenoState.diaRutina;
+        document.getElementById('entreno-date-label').textContent = ' · ' + fecha;
+
+        // Start timer
+        entrenoState.timerStart = Date.now();
+        entrenoState.timerInterval = setInterval(updateTimer, 1000);
+        renderExerciseCards();
+      } catch (e) {
+        alert('Error al crear sesión: ' + e.message);
+      }
+    }
+
+    function updateTimer() {
+      if (!entrenoState.timerStart) return;
+      const elapsed = Math.floor((Date.now() - entrenoState.timerStart) / 1000);
+      const min = Math.floor(elapsed / 60);
+      const sec = elapsed % 60;
+      document.getElementById('entreno-timer').textContent =
+        String(min).padStart(2, '0') + ':' + String(sec).padStart(2, '0');
+    }
+
+    async function loadExerciseCatalog() {
+      try {
+        const res = await fetch('/api/gym/ejercicios');
+        const json = await res.json();
+        entrenoState.exerciseCatalog = json.ok ? json.data : [];
+      } catch (e) {
+        entrenoState.exerciseCatalog = [];
+      }
+    }
+
+    function renderExerciseCards() {
+      const container = document.getElementById('entreno-exercise-list');
+      container.innerHTML = '';
+
+      // Group sets by exercise
+      const byExercise = {};
+      entrenoState.sessionSets.forEach(s => {
+        if (!byExercise[s.ejercicio]) byExercise[s.ejercicio] = [];
+        byExercise[s.ejercicio].push(s);
+      });
+
+      Object.entries(byExercise).forEach(([name, sets]) => {
+        const card = document.createElement('div');
+        card.className = 'exercise-card';
+        card.onclick = () => openSetLogger(sets[0].ejercicio_id, name);
+
+        const lastSet = sets[sets.length - 1];
+        let chipsHtml = sets.map(s => `<span class="set-chip">${s.peso_kg}×${s.reps}</span>`).join('');
+
+        card.innerHTML = `
+          <div class="ex-name">${name}</div>
+          <div class="ex-meta">${sets.length} serie${sets.length > 1 ? 's' : ''} · último: ${lastSet.peso_kg}kg × ${lastSet.reps}</div>
+          <div class="ex-sets-chips">${chipsHtml}</div>
+        `;
+        container.appendChild(card);
+      });
+
+      if (Object.keys(byExercise).length === 0) {
+        container.innerHTML = '<div style="text-align:center;color:var(--muted);font-family:DM Mono,monospace;font-size:12px;padding:40px 0;">Tocá + para agregar tu primer ejercicio</div>';
+      }
+    }
+
+    // Exercise modal
+    function openExerciseModal() {
+      document.getElementById('exercise-modal').classList.add('open');
+      document.getElementById('modal-search').value = '';
+      document.getElementById('modal-add-form').style.display = 'none';
+      renderModalExercises();
+      setTimeout(() => document.getElementById('modal-search').focus(), 100);
+    }
+
+    function closeExerciseModal() {
+      document.getElementById('exercise-modal').classList.remove('open');
+    }
+
+    function renderModalExercises(filter = '') {
+      const container = document.getElementById('modal-exercise-list');
+      container.innerHTML = '';
+      const lowerFilter = filter.toLowerCase();
+
+      // Group by muscle group
+      const groups = {};
+      entrenoState.exerciseCatalog.forEach(e => {
+        if (lowerFilter && !e.nombre.toLowerCase().includes(lowerFilter)) return;
+        const g = e.grupo_muscular || 'OTRO';
+        if (!groups[g]) groups[g] = [];
+        groups[g].push(e);
+      });
+
+      Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0])).forEach(([group, exercises]) => {
+        const title = document.createElement('div');
+        title.className = 'modal-group-title';
+        title.textContent = group;
+        container.appendChild(title);
+
+        exercises.forEach(e => {
+          const item = document.createElement('div');
+          item.className = 'modal-exercise-item';
+          item.textContent = e.nombre;
+          item.onclick = () => { closeExerciseModal(); openSetLogger(e.id, e.nombre); };
+          container.appendChild(item);
+        });
+      });
+    }
+
+    function filterExercises() {
+      renderModalExercises(document.getElementById('modal-search').value);
+    }
+
+    function showAddExercise() {
+      document.getElementById('modal-add-form').style.display = 'block';
+      document.getElementById('new-ex-nombre').focus();
+    }
+
+    async function addNewExercise() {
+      const nombre = document.getElementById('new-ex-nombre').value.trim();
+      const grupo = document.getElementById('new-ex-grupo').value;
+      if (!nombre || !grupo) { alert('Completá nombre y grupo muscular'); return; }
+
+      try {
+        const res = await fetch('/api/gym/ejercicios', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ nombre, grupo_muscular: grupo }),
+        });
+        const json = await res.json();
+        if (!json.ok) { alert(json.error); return; }
+
+        await loadExerciseCatalog();
+        closeExerciseModal();
+        openSetLogger(json.data.id, json.data.nombre);
+      } catch (e) {
+        alert('Error: ' + e.message);
+      }
+    }
+
+    // Set logger
+    async function openSetLogger(ejercicioId, ejercicioNombre) {
+      entrenoState.currentExerciseId = ejercicioId;
+      entrenoState.currentExerciseName = ejercicioNombre;
+
+      document.getElementById('sl-exercise-name').textContent = ejercicioNombre;
+
+      // Pre-fill from last session or current session sets for this exercise
+      const currentSets = entrenoState.sessionSets.filter(s => s.ejercicio_id === ejercicioId);
+      let prefillPeso = 0, prefillReps = 0;
+
+      if (currentSets.length > 0) {
+        const last = currentSets[currentSets.length - 1];
+        prefillPeso = last.peso_kg;
+        prefillReps = last.reps;
+      } else {
+        // Try to get last session data from API
+        try {
+          const res = await fetch('/api/gym/ejercicio/' + encodeURIComponent(ejercicioNombre));
+          const json = await res.json();
+          if (json.ok && json.historico && json.historico.length > 0) {
+            const lastSession = json.historico[json.historico.length - 1];
+            prefillPeso = lastSession.peso_max;
+            prefillReps = lastSession.reps_en_max;
+            document.getElementById('sl-last-info').textContent =
+              'Última vez: ' + lastSession.peso_max + 'kg × ' + lastSession.reps_en_max + ' (' + lastSession.fecha + ')';
+          } else {
+            document.getElementById('sl-last-info').textContent = 'Primera vez con este ejercicio';
+          }
+        } catch (e) {
+          document.getElementById('sl-last-info').textContent = '';
+        }
+      }
+
+      document.getElementById('sl-peso').value = prefillPeso;
+      document.getElementById('sl-reps').value = prefillReps;
+
+      // Render chips for sets already logged this session
+      renderSetChips();
+
+      // Show set logger, hide exercise list
+      document.getElementById('entreno-step2').style.display = 'none';
+      document.getElementById('entreno-step3').style.display = 'block';
+      document.getElementById('entreno-step3').classList.add('active');
+      document.getElementById('fab-add').style.display = 'none';
+    }
+
+    function renderSetChips() {
+      const container = document.getElementById('sl-chips');
+      const currentSets = entrenoState.sessionSets.filter(
+        s => s.ejercicio_id === entrenoState.currentExerciseId
+      );
+      container.innerHTML = currentSets.map(
+        s => `<span class="set-chip">${s.peso_kg}×${s.reps}</span>`
+      ).join('');
+    }
+
+    function stepValue(inputId, delta) {
+      const input = document.getElementById(inputId);
+      let val = parseFloat(input.value) || 0;
+      val = Math.max(0, val + delta);
+      input.value = val;
+    }
+
+    async function saveSet() {
+      const peso = parseFloat(document.getElementById('sl-peso').value) || 0;
+      const reps = parseInt(document.getElementById('sl-reps').value) || 0;
+
+      if (reps <= 0) { alert('Ingresá las repeticiones'); return; }
+
+      try {
+        const res = await fetch('/api/gym/series', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            sesion_id: entrenoState.sesionId,
+            ejercicio_id: entrenoState.currentExerciseId,
+            reps,
+            peso_kg: peso,
+          }),
+        });
+        const json = await res.json();
+        if (!json.ok) { alert(json.error); return; }
+
+        // Add to local state (values do NOT reset — UX spec requirement)
+        entrenoState.sessionSets.push({
+          serie_id: json.data.id,
+          ejercicio_id: entrenoState.currentExerciseId,
+          ejercicio: entrenoState.currentExerciseName,
+          reps,
+          peso_kg: peso,
+        });
+
+        renderSetChips();
+      } catch (e) {
+        alert('Error: ' + e.message);
+      }
+    }
+
+    function finishExercise() {
+      document.getElementById('entreno-step3').style.display = 'none';
+      document.getElementById('entreno-step3').classList.remove('active');
+      document.getElementById('entreno-step2').style.display = 'block';
+      document.getElementById('fab-add').style.display = 'block';
+      entrenoState.currentExerciseId = null;
+      entrenoState.currentExerciseName = null;
+      renderExerciseCards();
+    }
+
+    function showSummary() {
+      if (entrenoState.sessionSets.length === 0) {
+        if (confirm('No registraste series. ¿Cancelar la sesión?')) { endSession(); }
+        return;
+      }
+
+      // Calculate stats
+      const exercises = new Set(entrenoState.sessionSets.map(s => s.ejercicio));
+      const totalSets = entrenoState.sessionSets.length;
+      const totalVol = Math.round(entrenoState.sessionSets.reduce((sum, s) => sum + s.peso_kg * s.reps, 0));
+
+      document.getElementById('sum-exercises').textContent = exercises.size;
+      document.getElementById('sum-sets').textContent = totalSets;
+      document.getElementById('sum-volume').textContent = totalVol.toLocaleString();
+
+      document.getElementById('entreno-step2').style.display = 'none';
+      document.getElementById('fab-add').style.display = 'none';
+      document.getElementById('entreno-step4').style.display = 'block';
+      document.getElementById('entreno-step4').classList.add('active');
+    }
+
+    function endSession() {
+      // Reset state
+      clearInterval(entrenoState.timerInterval);
+      entrenoState.sesionId = null;
+      entrenoState.diaRutina = null;
+      entrenoState.sessionSets = [];
+      entrenoState.timerStart = null;
+      entrenoState.currentExerciseId = null;
+
+      // Reset UI
+      document.getElementById('entreno-step1').style.display = 'block';
+      document.getElementById('entreno-step2').style.display = 'none';
+      document.getElementById('entreno-step3').style.display = 'none';
+      document.getElementById('entreno-step3').classList.remove('active');
+      document.getElementById('entreno-step4').style.display = 'none';
+      document.getElementById('entreno-step4').classList.remove('active');
+      document.getElementById('fab-add').style.display = 'none';
+      document.getElementById('entreno-timer').textContent = '00:00';
+      document.querySelectorAll('.day-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('btn-start').disabled = true;
+      document.getElementById('entreno-date').value = new Date().toISOString().split('T')[0];
+
+      // Switch to overview and reload data
+      switchTabDirect('overview');
+      loadAPIData();
+    }
+
+    // switchTab without event.target (for programmatic use)
+    function switchTabDirect(name) {
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(b => {
+        b.classList.remove('active');
+        if (b.textContent.trim() === {overview:'OVERVIEW',gym:'GIMNASIO',running:'RUNNING',body:'COMPOSICIÓN',entreno:'ENTRENO',sleep:'SUEÑO',analysis:'ANÁLISIS'}[name]) {
+          b.classList.add('active');
+        }
+      });
+      document.getElementById('tab-' + name).classList.add('active');
+      // Hide FAB when not in entreno
+      if (name !== 'entreno') document.getElementById('fab-add').style.display = 'none';
     }
   </script>
 </body>

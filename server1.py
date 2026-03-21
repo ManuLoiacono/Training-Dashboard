@@ -1,16 +1,23 @@
 """
 MANU///LOGS — servidor local
-Corre con: python server.py
+Corre con: python server1.py
 Abre en el browser: http://localhost:5000
 """
 
 import json
 import os
-from datetime import datetime
-from flask import Flask, jsonify, send_file, send_from_directory
+from datetime import datetime, date as date_type
+from dotenv import load_dotenv
+
+load_dotenv()
+
+from flask import Flask, jsonify, request, send_file, send_from_directory
 from flask_cors import CORS
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
+
+import models
+from models import get_session, Ejercicio, Sesion, Serie, read_gym_as_rows
 
 # ─────────────────────────────────────────────
 # Módulos opcionales: Garmin Connect y PDF parser
@@ -32,13 +39,8 @@ except ImportError:
 # CONFIGURACIÓN — editá estos valores
 # ─────────────────────────────────────────────
 
-SPREADSHEET_ID = "1ef2kn8q_8sgT96LsljUixN4ZBFNi0W1MsBuk9-NpZ4o"
-# El ID está en la URL de tu Sheet:
-# https://docs.google.com/spreadsheets/d/[ESTE_ES_EL_ID]/edit
-
-CREDENTIALS_FILE = "credentials.json"
-# Archivo de credenciales que descargás de Google Cloud Console
-# (ver README.md para instrucciones paso a paso)
+SPREADSHEET_ID = os.environ.get("SPREADSHEET_ID", "1ef2kn8q_8sgT96LsljUixN4ZBFNi0W1MsBuk9-NpZ4o")
+CREDENTIALS_FILE = os.environ.get("CREDENTIALS_FILE", "credentials.json")
 
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets.readonly"]
 
@@ -92,15 +94,17 @@ def index():
 @app.route("/api/gimnasio")
 def api_gimnasio():
     """
-    Lee la hoja 'gimnasio' y devuelve los datos procesados.
-    Estructura esperada del sheet:
-    fecha | dia | ejercicio | grupo_muscular | serie | reps | peso_kg | notas
+    Datos de gimnasio desde SQLite (migrado de Google Sheets).
+    Formato flat: fecha | dia | ejercicio | grupo_muscular | serie | reps | peso_kg | notas
     """
     try:
-        rows = read_sheet(SHEET_GIMNASIO)
-        return jsonify({ "ok": True, "data": rows })
+        rows = read_gym_as_rows()
+        if not rows:
+            # Fallback a Sheets si la DB está vacía (pre-migración)
+            rows = read_sheet(SHEET_GIMNASIO)
+        return jsonify({"ok": True, "data": rows})
     except Exception as e:
-        return jsonify({ "ok": False, "error": str(e) }), 500
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 @app.route("/api/running")
 def api_running():
@@ -144,6 +148,282 @@ def api_antropometria():
     except Exception:
         return jsonify({"ok": True, "data": [], "source": "none"})
 
+# ─────────────────────────────────────────────
+# GYM CRUD ENDPOINTS (SQLite)
+# ─────────────────────────────────────────────
+
+@app.route("/api/gym/ejercicios")
+def api_gym_ejercicios():
+    """Catálogo de ejercicios ordenado por grupo muscular."""
+    session = get_session()
+    try:
+        ejercicios = session.query(Ejercicio).order_by(Ejercicio.grupo_muscular, Ejercicio.nombre).all()
+        return jsonify({"ok": True, "data": [e.to_dict() for e in ejercicios]})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+    finally:
+        session.close()
+
+
+@app.route("/api/gym/ejercicios", methods=["POST"])
+def api_gym_ejercicios_create():
+    """Agregar un nuevo ejercicio al catálogo."""
+    data = request.get_json(force=True)
+    nombre = (data.get("nombre") or "").strip().upper()
+    grupo = (data.get("grupo_muscular") or "").strip().upper()
+    if not nombre or not grupo:
+        return jsonify({"ok": False, "error": "nombre y grupo_muscular son requeridos"}), 400
+
+    session = get_session()
+    try:
+        existing = session.query(Ejercicio).filter(Ejercicio.nombre == nombre).first()
+        if existing:
+            return jsonify({"ok": False, "error": f"Ejercicio '{nombre}' ya existe"}), 409
+        ej = Ejercicio(nombre=nombre, grupo_muscular=grupo)
+        session.add(ej)
+        session.commit()
+        return jsonify({"ok": True, "data": ej.to_dict()}), 201
+    except Exception as e:
+        session.rollback()
+        return jsonify({"ok": False, "error": str(e)}), 500
+    finally:
+        session.close()
+
+
+@app.route("/api/gym/sesiones")
+def api_gym_sesiones():
+    """Lista de sesiones con metadata. Query param: ?semanas=N (default 12)."""
+    semanas = request.args.get("semanas", 12, type=int)
+    from datetime import timedelta
+    desde = date_type.today() - timedelta(weeks=semanas)
+
+    session = get_session()
+    try:
+        sesiones = (
+            session.query(Sesion)
+            .filter(Sesion.fecha >= desde)
+            .order_by(Sesion.fecha.desc())
+            .all()
+        )
+        return jsonify({"ok": True, "data": [s.to_dict() for s in sesiones]})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+    finally:
+        session.close()
+
+
+@app.route("/api/gym/sesiones", methods=["POST"])
+def api_gym_sesiones_create():
+    """Crear nueva sesión. Body: { fecha, dia_rutina, notas }."""
+    data = request.get_json(force=True)
+    fecha_str = data.get("fecha") or date_type.today().isoformat()
+    dia = data.get("dia_rutina")
+    notas = data.get("notas", "")
+
+    if not dia:
+        return jsonify({"ok": False, "error": "dia_rutina es requerido"}), 400
+
+    try:
+        fecha = date_type.fromisoformat(fecha_str)
+    except ValueError:
+        return jsonify({"ok": False, "error": "fecha inválida (YYYY-MM-DD)"}), 400
+
+    session = get_session()
+    try:
+        s = Sesion(fecha=fecha, dia_rutina=int(dia), notas=notas)
+        session.add(s)
+        session.commit()
+        return jsonify({"ok": True, "data": s.to_dict()}), 201
+    except Exception as e:
+        session.rollback()
+        return jsonify({"ok": False, "error": str(e)}), 500
+    finally:
+        session.close()
+
+
+@app.route("/api/gym/sesiones/<int:sesion_id>")
+def api_gym_sesion_detail(sesion_id):
+    """Detalle de sesión con todas sus series y ejercicios."""
+    session = get_session()
+    try:
+        s = session.query(Sesion).get(sesion_id)
+        if not s:
+            return jsonify({"ok": False, "error": "Sesión no encontrada"}), 404
+        return jsonify({"ok": True, "data": s.to_dict(include_series=True)})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+    finally:
+        session.close()
+
+
+@app.route("/api/gym/series", methods=["POST"])
+def api_gym_series_create():
+    """Agregar serie a sesión. Body: { sesion_id, ejercicio_id, reps, peso_kg, notas }."""
+    data = request.get_json(force=True)
+    sesion_id = data.get("sesion_id")
+    ejercicio_id = data.get("ejercicio_id")
+    reps = data.get("reps")
+    peso_kg = data.get("peso_kg", 0)
+
+    if not all([sesion_id, ejercicio_id, reps is not None]):
+        return jsonify({"ok": False, "error": "sesion_id, ejercicio_id y reps son requeridos"}), 400
+
+    session = get_session()
+    try:
+        # Calcular numero_serie automáticamente
+        count = (
+            session.query(Serie)
+            .filter(Serie.sesion_id == sesion_id, Serie.ejercicio_id == ejercicio_id)
+            .count()
+        )
+        serie = Serie(
+            sesion_id=int(sesion_id),
+            ejercicio_id=int(ejercicio_id),
+            numero_serie=count + 1,
+            reps=int(reps),
+            peso_kg=float(peso_kg),
+            notas=data.get("notas", ""),
+        )
+        session.add(serie)
+        session.commit()
+        return jsonify({"ok": True, "data": serie.to_dict()}), 201
+    except Exception as e:
+        session.rollback()
+        return jsonify({"ok": False, "error": str(e)}), 500
+    finally:
+        session.close()
+
+
+@app.route("/api/gym/series/<int:serie_id>", methods=["PUT"])
+def api_gym_series_update(serie_id):
+    """Editar una serie existente."""
+    data = request.get_json(force=True)
+    session = get_session()
+    try:
+        serie = session.query(Serie).get(serie_id)
+        if not serie:
+            return jsonify({"ok": False, "error": "Serie no encontrada"}), 404
+        if "reps" in data:
+            serie.reps = int(data["reps"])
+        if "peso_kg" in data:
+            serie.peso_kg = float(data["peso_kg"])
+        if "notas" in data:
+            serie.notas = data["notas"]
+        session.commit()
+        return jsonify({"ok": True, "data": serie.to_dict()})
+    except Exception as e:
+        session.rollback()
+        return jsonify({"ok": False, "error": str(e)}), 500
+    finally:
+        session.close()
+
+
+@app.route("/api/gym/series/<int:serie_id>", methods=["DELETE"])
+def api_gym_series_delete(serie_id):
+    """Eliminar una serie."""
+    session = get_session()
+    try:
+        serie = session.query(Serie).get(serie_id)
+        if not serie:
+            return jsonify({"ok": False, "error": "Serie no encontrada"}), 404
+        session.delete(serie)
+        session.commit()
+        return jsonify({"ok": True})
+    except Exception as e:
+        session.rollback()
+        return jsonify({"ok": False, "error": str(e)}), 500
+    finally:
+        session.close()
+
+
+@app.route("/api/gym/ejercicio/<nombre>")
+def api_gym_ejercicio_history(nombre):
+    """Historial de un ejercicio desde SQLite (reemplaza /api/ejercicio/<nombre>)."""
+    nombre_upper = nombre.strip().upper()
+    session = get_session()
+    try:
+        ejercicio = session.query(Ejercicio).filter(Ejercicio.nombre == nombre_upper).first()
+        if not ejercicio:
+            return jsonify({"ok": False, "error": f"Ejercicio '{nombre}' no encontrado"}), 404
+
+        series = (
+            session.query(Serie)
+            .join(Sesion)
+            .filter(Serie.ejercicio_id == ejercicio.id)
+            .order_by(Sesion.fecha, Serie.numero_serie)
+            .all()
+        )
+
+        # Agrupar por fecha
+        sesiones_dict = {}
+        for s in series:
+            fecha = s.sesion.fecha.isoformat()
+            if fecha not in sesiones_dict:
+                sesiones_dict[fecha] = []
+            sesiones_dict[fecha].append({"reps": s.reps, "peso": s.peso_kg})
+
+        historico = []
+        all_sets = []
+        for fecha in sorted(sesiones_dict.keys()):
+            sets = sesiones_dict[fecha]
+            peso_max = max(s["peso"] for s in sets)
+            reps_en_max = max(s["reps"] for s in sets if s["peso"] == peso_max)
+            volumen = sum(s["reps"] * s["peso"] for s in sets)
+            rm_estimado = round(peso_max * (1 + reps_en_max / 30), 1) if peso_max > 0 else 0
+
+            from datetime import timedelta
+            d = datetime.strptime(fecha, "%Y-%m-%d")
+            week_start = d - timedelta(days=d.weekday())
+
+            historico.append({
+                "fecha": fecha,
+                "semana": week_start.strftime("%Y-%m-%d"),
+                "peso_max": peso_max,
+                "reps_en_max": reps_en_max,
+                "volumen": round(volumen),
+                "1rm_estimado": rm_estimado,
+            })
+            for s in sets:
+                all_sets.append({"fecha": fecha, "reps": s["reps"], "peso": s["peso"],
+                                 "vol": s["reps"] * s["peso"]})
+
+        pr_peso_set = max(all_sets, key=lambda s: s["peso"]) if all_sets else None
+        pr_vol_set = max(all_sets, key=lambda s: s["vol"]) if all_sets else None
+        top5 = sorted(all_sets, key=lambda s: s["vol"], reverse=True)[:5]
+
+        tendencia = ""
+        estancado = False
+        if len(historico) >= 2:
+            recent = historico[-1]["peso_max"]
+            idx_4sem = max(0, len(historico) - 5)
+            old = historico[idx_4sem]["peso_max"]
+            diff = recent - old
+            tendencia = f"+{diff}kg" if diff >= 0 else f"{diff}kg"
+            if len(historico) >= 3:
+                last3 = [h["peso_max"] for h in historico[-3:]]
+                estancado = len(set(last3)) == 1
+
+        return jsonify({
+            "ok": True,
+            "ejercicio": nombre_upper,
+            "grupo": ejercicio.grupo_muscular,
+            "historico": historico,
+            "pr_peso": {"valor": pr_peso_set["peso"], "fecha": pr_peso_set["fecha"]} if pr_peso_set else None,
+            "pr_volumen": {"valor": round(pr_vol_set["vol"]), "fecha": pr_vol_set["fecha"]} if pr_vol_set else None,
+            "top5_sets": top5,
+            "tendencia_4sem": tendencia,
+            "estancado": estancado,
+        })
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+    finally:
+        session.close()
+
+
+# ─────────────────────────────────────────────
+# FEATURE ENDPOINTS
+# ─────────────────────────────────────────────
+
 SCORE_WEIGHTS = {
     "gimnasio":    0.40,
     "running":     0.35,
@@ -173,7 +453,7 @@ def api_score():
     gym_score = None
     gym_weekly_vols = {}
     try:
-        rows = read_sheet(SHEET_GIMNASIO)
+        rows = read_gym_as_rows() or read_sheet(SHEET_GIMNASIO)
         for r in rows:
             fecha = r.get("fecha", "")
             if not fecha:
@@ -307,7 +587,7 @@ def api_ejercicio(nombre):
     1RM estimado (Epley), PRs, tendencia 4 semanas, alerta estancamiento.
     """
     try:
-        rows = read_sheet(SHEET_GIMNASIO)
+        rows = read_gym_as_rows() or read_sheet(SHEET_GIMNASIO)
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
 
@@ -411,7 +691,7 @@ def api_correlaciones():
     # --- Gym weekly volumes ---
     gym_weekly = {}
     try:
-        rows = read_sheet(SHEET_GIMNASIO)
+        rows = read_gym_as_rows() or read_sheet(SHEET_GIMNASIO)
         for r in rows:
             fecha = r.get("fecha", "")
             if not fecha:
@@ -503,10 +783,15 @@ def api_all():
     result = {}
     sources = {}
 
-    # Gimnasio: siempre de Google Sheets
+    # Gimnasio: SQLite primero, fallback a Sheets
     try:
-        result["gimnasio"] = read_sheet(SHEET_GIMNASIO)
-        sources["gimnasio"] = "sheets"
+        gym_rows = read_gym_as_rows()
+        if gym_rows:
+            result["gimnasio"] = gym_rows
+            sources["gimnasio"] = "sqlite"
+        else:
+            result["gimnasio"] = read_sheet(SHEET_GIMNASIO)
+            sources["gimnasio"] = "sheets"
     except Exception as e:
         result["gimnasio"] = []
         sources["gimnasio"] = "error"
