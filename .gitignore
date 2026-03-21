@@ -8,6 +8,12 @@ credentials.json
 *.key
 *.pem
 
+# Environment
+.env
+
+# Database
+*.db
+
 # Garmin tokens
 .garth/
 

@@ -623,6 +623,551 @@
     .stat-value.empty {
       color: var(--muted2);
     }
+
+    /* SCORE SECTION (F-01) */
+    .score-hero {
+      display: flex;
+      align-items: center;
+      gap: 32px;
+      margin-bottom: 24px;
+      padding: 28px 32px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+    }
+
+    .score-number {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 80px;
+      line-height: 1;
+      color: var(--accent);
+      letter-spacing: 2px;
+    }
+
+    .score-number.low { color: var(--accent3); }
+    .score-number.mid { color: #f18535; }
+
+    .score-meta {
+      flex: 1;
+    }
+
+    .score-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 2px;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .score-delta {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 28px;
+      letter-spacing: 1px;
+    }
+
+    .score-delta.up { color: var(--accent); }
+    .score-delta.down { color: var(--accent3); }
+
+    .score-breakdown {
+      display: flex;
+      gap: 16px;
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
+
+    .score-component {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      color: var(--muted);
+      padding: 4px 10px;
+      border: 1px solid var(--border);
+      letter-spacing: 1px;
+    }
+
+    .score-component span {
+      color: var(--text);
+      font-weight: 500;
+    }
+
+    /* PROGRESIÓN SECTION */
+    .prog-section {
+      margin-top: 24px;
+      border-top: 1px solid var(--border);
+      padding-top: 24px;
+    }
+
+    .prog-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .prog-select {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      padding: 10px 16px;
+      min-width: 240px;
+      cursor: pointer;
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23555' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      padding-right: 36px;
+    }
+
+    .prog-select:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .prog-select optgroup {
+      color: var(--accent);
+      font-weight: 500;
+    }
+
+    .prog-select option {
+      color: var(--text);
+      background: var(--surface);
+    }
+
+    .prog-trend {
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      letter-spacing: 1px;
+      padding: 6px 14px;
+      border: 1px solid var(--border);
+    }
+
+    .prog-trend.up {
+      color: var(--accent);
+      border-color: var(--accent);
+      background: rgba(200, 241, 53, 0.06);
+    }
+
+    .prog-trend.down {
+      color: var(--accent3);
+      border-color: var(--accent3);
+      background: rgba(241, 53, 128, 0.06);
+    }
+
+    .prog-trend.flat {
+      color: #f18535;
+      border-color: #f18535;
+      background: rgba(241, 133, 53, 0.06);
+    }
+
+    .prog-stagnation {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: #f18535;
+      padding: 4px 12px;
+      border: 1px solid #f18535;
+      background: rgba(241, 133, 53, 0.08);
+      letter-spacing: 1px;
+    }
+
+    .prog-pr-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+    }
+
+    .prog-pr-table th {
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      font-size: 9px;
+      color: var(--muted);
+      padding: 8px 10px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .prog-pr-table td {
+      padding: 8px 10px;
+      color: var(--text);
+      border-bottom: 1px solid var(--muted2);
+    }
+
+    .prog-pr-table tr:first-child td {
+      color: var(--accent);
+    }
+
+    /* ─────── ENTRENO TAB ─────── */
+    .entreno-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-bottom: 20px;
+    }
+    .entreno-header .session-info {
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .entreno-header .session-info strong {
+      color: var(--accent);
+      font-size: 16px;
+    }
+    .entreno-timer {
+      font-family: 'DM Mono', monospace;
+      font-size: 22px;
+      color: var(--accent2);
+    }
+
+    /* Step 1: start session */
+    .entreno-start {
+      text-align: center;
+      padding: 40px 0;
+    }
+    .entreno-start .date-input {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 14px;
+      padding: 12px 16px;
+      text-align: center;
+      margin-bottom: 24px;
+    }
+    .day-selector {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      margin-bottom: 28px;
+    }
+    .day-btn {
+      background: var(--surface);
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      color: var(--muted);
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 22px;
+      letter-spacing: 2px;
+      padding: 16px 28px;
+      min-height: 56px;
+      min-width: 100px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .day-btn:hover { border-color: var(--accent); color: var(--text); }
+    .day-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(200,241,53,0.08); }
+
+    .btn-start-session {
+      background: var(--accent);
+      color: #0A0A0A;
+      border: none;
+      border-radius: 12px;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 24px;
+      letter-spacing: 3px;
+      padding: 18px 0;
+      width: 100%;
+      max-width: 400px;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .btn-start-session:hover { opacity: 0.85; }
+    .btn-start-session:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* Step 2: exercise list + FAB */
+    .entreno-exercises {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 80px;
+    }
+    .exercise-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 20px;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    .exercise-card:hover { border-color: var(--accent); }
+    .exercise-card .ex-name {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 18px;
+      letter-spacing: 1px;
+      color: var(--text);
+    }
+    .exercise-card .ex-meta {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+    .exercise-card .ex-sets-chips {
+      display: flex;
+      gap: 6px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+    .set-chip {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 4px 8px;
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: var(--accent);
+    }
+
+    .fab-add {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #0A0A0A;
+      border: none;
+      font-size: 32px;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(200,241,53,0.3);
+      z-index: 90;
+      display: none;
+      transition: transform 0.2s;
+    }
+    .fab-add:hover { transform: scale(1.1); }
+
+    /* Exercise search modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.8);
+      z-index: 200;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      width: 90%;
+      max-width: 480px;
+      max-height: 80vh;
+      overflow-y: auto;
+      padding: 24px;
+    }
+    .modal-box h3 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 22px;
+      letter-spacing: 2px;
+      color: var(--accent);
+      margin-bottom: 16px;
+    }
+    .modal-search {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+    }
+    .modal-search:focus { outline: none; border-color: var(--accent); }
+    .modal-group-title {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 2px;
+      color: var(--accent2);
+      margin: 16px 0 8px;
+      text-transform: uppercase;
+    }
+    .modal-exercise-item {
+      padding: 12px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      color: var(--text);
+      font-size: 14px;
+      transition: background 0.15s;
+    }
+    .modal-exercise-item:hover { background: var(--surface2); }
+    .modal-add-new {
+      color: var(--accent);
+      border-top: 1px solid var(--border);
+      margin-top: 12px;
+      padding-top: 12px;
+      cursor: pointer;
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+    }
+    .modal-add-new:hover { text-decoration: underline; }
+
+    /* Step 3: Log set screen */
+    .set-logger {
+      display: none;
+      text-align: center;
+      padding: 20px 0;
+    }
+    .set-logger.active { display: block; }
+    .set-logger .sl-exercise-name {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 28px;
+      letter-spacing: 2px;
+      color: var(--text);
+    }
+    .set-logger .sl-last-info {
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 4px;
+      margin-bottom: 24px;
+    }
+    .input-group {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .input-group label {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 2px;
+      color: var(--muted);
+      display: block;
+      margin-bottom: 10px;
+      text-transform: uppercase;
+    }
+    .input-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+    }
+    .step-btn {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--accent);
+      font-family: 'DM Mono', monospace;
+      font-size: 16px;
+      width: 56px;
+      height: 56px;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .step-btn:hover { border-color: var(--accent); background: rgba(200,241,53,0.08); }
+    .step-btn:active { transform: scale(0.95); }
+    .num-input {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--accent);
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 36px;
+      text-align: center;
+      width: 100px;
+      padding: 8px;
+    }
+    .num-input:focus { outline: none; border-color: var(--accent); }
+
+    .sl-chips {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin: 16px 0;
+    }
+    .btn-save-set {
+      background: var(--accent);
+      color: #0A0A0A;
+      border: none;
+      border-radius: 12px;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 20px;
+      letter-spacing: 2px;
+      padding: 16px 0;
+      width: 100%;
+      cursor: pointer;
+      margin-bottom: 12px;
+      transition: opacity 0.2s;
+    }
+    .btn-save-set:hover { opacity: 0.85; }
+    .btn-finish-exercise {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      letter-spacing: 1px;
+      padding: 10px 0;
+      width: 100%;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-finish-exercise:hover { border-color: var(--accent); color: var(--text); }
+
+    /* Step 4: session summary */
+    .session-summary {
+      display: none;
+      text-align: center;
+      padding: 40px 0;
+    }
+    .session-summary.active { display: block; }
+    .summary-stat {
+      display: inline-block;
+      margin: 0 20px;
+      text-align: center;
+    }
+    .summary-stat .val {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 36px;
+      color: var(--accent);
+    }
+    .summary-stat .lbl {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .btn-finish-session {
+      background: var(--accent);
+      color: #0A0A0A;
+      border: none;
+      border-radius: 12px;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 20px;
+      letter-spacing: 2px;
+      padding: 16px 40px;
+      cursor: pointer;
+      margin-top: 32px;
+      transition: opacity 0.2s;
+    }
+    .btn-finish-session:hover { opacity: 0.85; }
+
+    @media (max-width: 768px) {
+      .step-btn { width: 56px; height: 56px; font-size: 18px; }
+      .num-input { font-size: 32px; width: 90px; }
+      .day-btn { padding: 14px 20px; font-size: 20px; min-width: 80px; }
+      .modal-box { width: 95%; max-height: 90vh; padding: 16px; }
+      .fab-add { bottom: 16px; right: 16px; }
+    }
   </style>
 </head>
 
@@ -642,6 +1187,9 @@
     <button class="tab-btn" onclick="switchTab('gym')">GIMNASIO</button>
     <button class="tab-btn" onclick="switchTab('running')">RUNNING</button>
     <button class="tab-btn" onclick="switchTab('body')">COMPOSICIÓN</button>
+    <button class="tab-btn" onclick="switchTab('entreno')">ENTRENO</button>
+    <button class="tab-btn" onclick="switchTab('sleep')">SUEÑO</button>
+    <button class="tab-btn" onclick="switchTab('analysis')">ANÁLISIS</button>
   </nav>
 
   <main>
@@ -655,6 +1203,28 @@
         <div class="pr-label">PRs ↗</div>
         <div class="pr-items" id="pr-items">
           <div class="pr-item" style="color: var(--muted)">Sin PRs registrados</div>
+        </div>
+      </div>
+
+      <!-- WEEKLY SCORE (F-01) -->
+      <div class="score-hero" id="score-hero" style="display:none;">
+        <div class="score-number" id="score-number">—</div>
+        <div class="score-meta">
+          <div class="score-label">PERFORMANCE SCORE · ESTA SEMANA</div>
+          <div class="score-delta" id="score-delta"></div>
+          <div class="score-breakdown" id="score-breakdown"></div>
+        </div>
+      </div>
+
+      <div class="grid-2" style="margin-bottom:16px;">
+        <div class="chart-card" id="score-chart-card" style="display:none;">
+          <div class="chart-title">
+            <span class="chart-title-dot"></span>
+            SCORE SEMANAL — ÚLTIMAS 12 SEMANAS
+          </div>
+          <div class="chart-wrapper">
+            <canvas id="scoreHistoryChart"></canvas>
+          </div>
         </div>
       </div>
 
@@ -688,6 +1258,11 @@
           <div class="stat-label">Masa adiposa</div>
           <div class="stat-value empty" id="ov-stat-adiposa">&mdash;</div>
           <div class="stat-unit" id="ov-unit-adiposa">KG</div>
+        </div>
+        <div class="stat-card" style="--accent-override: var(--accent2);">
+          <div class="stat-label">Sueño prom. semana</div>
+          <div class="stat-value empty" id="ov-stat-sleep">&mdash;</div>
+          <div class="stat-unit">HORAS / NOCHE</div>
         </div>
       </div>
 
@@ -771,6 +1346,74 @@
         </div>
         <div id="exerciseTableContainer">
           <!-- filled by JS -->
+        </div>
+      </div>
+
+      <!-- PROGRESIÓN POR EJERCICIO (F-02) -->
+      <div class="prog-section">
+        <div class="section-title" style="font-size:32px;">PROGRESIÓN</div>
+        <div class="section-subtitle">EVOLUCIÓN HISTÓRICA POR EJERCICIO</div>
+
+        <div class="prog-header">
+          <select class="prog-select" id="prog-exercise-select" onchange="loadExerciseProgression(this.value)">
+            <option value="">— SELECCIONÁ UN EJERCICIO —</option>
+          </select>
+          <span id="prog-trend-badge"></span>
+          <span id="prog-stagnation-badge"></span>
+        </div>
+
+        <div id="prog-content" style="display:none;">
+          <div class="stats-row" style="margin-bottom:20px;">
+            <div class="stat-card">
+              <div class="stat-label">PR PESO</div>
+              <div class="stat-value" id="prog-pr-peso">—</div>
+              <div class="stat-unit" id="prog-pr-peso-fecha"></div>
+            </div>
+            <div class="stat-card blue">
+              <div class="stat-label">PR VOLUMEN</div>
+              <div class="stat-value" id="prog-pr-vol">—</div>
+              <div class="stat-unit" id="prog-pr-vol-fecha"></div>
+            </div>
+            <div class="stat-card pink">
+              <div class="stat-label">1RM ESTIMADO</div>
+              <div class="stat-value" id="prog-1rm">—</div>
+              <div class="stat-unit">EPLEY · MEJOR SESIÓN</div>
+            </div>
+            <div class="stat-card orange">
+              <div class="stat-label">SESIONES</div>
+              <div class="stat-value" id="prog-sessions">—</div>
+              <div class="stat-unit">REGISTRADAS</div>
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div class="chart-card">
+              <div class="chart-title">
+                <span class="chart-title-dot"></span>
+                PESO MÁXIMO POR SESIÓN + 1RM ESTIMADO
+              </div>
+              <div class="chart-wrapper tall">
+                <canvas id="progWeightChart"></canvas>
+              </div>
+            </div>
+            <div class="chart-card">
+              <div class="chart-title">
+                <span class="chart-title-dot blue"></span>
+                VOLUMEN SEMANAL (series × reps × kg)
+              </div>
+              <div class="chart-wrapper tall">
+                <canvas id="progVolumeChart"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <div class="chart-card">
+            <div class="chart-title">
+              <span class="chart-title-dot pink"></span>
+              TOP 5 MEJORES SERIES
+            </div>
+            <div id="prog-pr-table-container"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -954,6 +1597,205 @@
       </div>
     </div>
 
+    <!-- =================== SUEÑO (F-04) =================== -->
+    <div class="tab-panel" id="tab-sleep">
+      <div class="section-title">SUEÑO</div>
+      <div class="section-subtitle" id="sleep-subtitle">DATOS DE GARMIN CONNECT</div>
+
+      <div class="stats-row">
+        <div class="stat-card blue">
+          <div class="stat-label">Promedio semanal</div>
+          <div class="stat-value empty" id="sleep-stat-avg">&mdash;</div>
+          <div class="stat-unit">HORAS / NOCHE</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Score promedio</div>
+          <div class="stat-value empty" id="sleep-stat-score">&mdash;</div>
+          <div class="stat-unit">GARMIN SLEEP SCORE</div>
+        </div>
+        <div class="stat-card pink">
+          <div class="stat-label">Deep sleep prom.</div>
+          <div class="stat-value empty" id="sleep-stat-deep">&mdash;</div>
+          <div class="stat-unit">MIN / NOCHE</div>
+        </div>
+        <div class="stat-card orange">
+          <div class="stat-label">HRV nocturno</div>
+          <div class="stat-value empty" id="sleep-stat-hrv">&mdash;</div>
+          <div class="stat-unit">MS PROMEDIO</div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="chart-card">
+          <div class="chart-title">
+            <span class="chart-title-dot blue"></span>
+            DURACIÓN POR NOCHE (últimas 4 semanas)
+          </div>
+          <div class="chart-wrapper tall">
+            <canvas id="sleepDurationChart"></canvas>
+          </div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">
+            <span class="chart-title-dot"></span>
+            SLEEP SCORE POR NOCHE
+          </div>
+          <div class="chart-wrapper tall">
+            <canvas id="sleepScoreChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-title">
+          <span class="chart-title-dot pink"></span>
+          FASES DEL SUEÑO (minutos por noche)
+        </div>
+        <div class="chart-wrapper tall">
+          <canvas id="sleepPhasesChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- =================== ANÁLISIS (F-03) =================== -->
+    <div class="tab-panel" id="tab-analysis">
+      <div class="section-title">ANÁLISIS</div>
+      <div class="section-subtitle">CORRELACIONES ENTRE FUENTES DE DATOS</div>
+
+      <div class="chart-card" style="margin-bottom:16px;">
+        <div class="chart-title">
+          <span class="chart-title-dot"></span>
+          ¿CORRER MÁS AFECTA MI RENDIMIENTO EN EL GYM?
+        </div>
+        <div class="section-subtitle" style="margin-bottom:12px;font-size:10px;">Running km/semana vs volumen de gym/semana · Cada punto = una semana</div>
+        <div class="chart-wrapper tall">
+          <canvas id="corrRunGymChart"></canvas>
+        </div>
+        <div class="section-subtitle" id="corr-run-gym-interp" style="margin-top:12px;margin-bottom:0;font-size:10px;color:var(--accent2);"></div>
+      </div>
+
+      <div class="grid-2">
+        <div class="chart-card">
+          <div class="chart-title">
+            <span class="chart-title-dot pink"></span>
+            ¿CUANDO PIERDO GRASA, CORRO MÁS RÁPIDO?
+          </div>
+          <div class="section-subtitle" style="margin-bottom:12px;font-size:10px;">Masa adiposa (kg) vs pace promedio (min/km)</div>
+          <div class="chart-wrapper tall">
+            <canvas id="corrBodyPaceChart"></canvas>
+          </div>
+          <div class="section-subtitle" id="corr-body-pace-interp" style="margin-top:12px;margin-bottom:0;font-size:10px;color:var(--accent2);"></div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-title">
+            <span class="chart-title-dot blue"></span>
+            ¿ENTRENO MÁS DURO = PEOR RECUPERACIÓN?
+          </div>
+          <div class="section-subtitle" style="margin-bottom:12px;font-size:10px;">Volumen semanal vs FC reposo semana siguiente</div>
+          <div class="chart-wrapper tall">
+            <canvas id="corrVolHRChart"></canvas>
+          </div>
+          <div class="section-subtitle" id="corr-vol-hr-interp" style="margin-top:12px;margin-bottom:0;font-size:10px;color:var(--accent2);"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- =================== ENTRENO =================== -->
+    <div class="tab-panel" id="tab-entreno">
+      <div class="section-title">ENTRENO</div>
+
+      <!-- Step 1: Start session -->
+      <div id="entreno-step1" class="entreno-start">
+        <div class="section-subtitle" style="margin-bottom:20px;">NUEVA SESIÓN</div>
+        <input type="date" id="entreno-date" class="date-input"><br><br>
+        <div class="day-selector">
+          <button class="day-btn" onclick="selectDay(1, this)">DÍA 1</button>
+          <button class="day-btn" onclick="selectDay(2, this)">DÍA 2</button>
+          <button class="day-btn" onclick="selectDay(3, this)">DÍA 3</button>
+        </div>
+        <button class="btn-start-session" id="btn-start" onclick="startSession()" disabled>INICIAR SESIÓN</button>
+      </div>
+
+      <!-- Step 2: Active session -->
+      <div id="entreno-step2" style="display:none;">
+        <div class="entreno-header">
+          <div class="session-info">
+            <strong id="entreno-day-label">DÍA 1</strong>
+            <span id="entreno-date-label"></span>
+          </div>
+          <div class="entreno-timer" id="entreno-timer">00:00</div>
+          <button class="btn-finish-exercise" style="width:auto;padding:8px 16px;" onclick="showSummary()">FINALIZAR</button>
+        </div>
+        <div class="entreno-exercises" id="entreno-exercise-list"></div>
+      </div>
+
+      <!-- Set logger (step 3) -->
+      <div id="entreno-step3" class="set-logger">
+        <div class="sl-exercise-name" id="sl-exercise-name"></div>
+        <div class="sl-last-info" id="sl-last-info"></div>
+        <div class="input-group">
+          <label>PESO (kg)</label>
+          <div class="input-row">
+            <button class="step-btn" onclick="stepValue('sl-peso', -2.5)">−2.5</button>
+            <input type="number" inputmode="decimal" step="2.5" id="sl-peso" class="num-input" value="0">
+            <button class="step-btn" onclick="stepValue('sl-peso', 2.5)">+2.5</button>
+          </div>
+        </div>
+        <div class="input-group">
+          <label>REPS</label>
+          <div class="input-row">
+            <button class="step-btn" onclick="stepValue('sl-reps', -1)">−1</button>
+            <input type="number" inputmode="numeric" step="1" id="sl-reps" class="num-input" value="0">
+            <button class="step-btn" onclick="stepValue('sl-reps', 1)">+1</button>
+          </div>
+        </div>
+        <div class="sl-chips" id="sl-chips"></div>
+        <button class="btn-save-set" onclick="saveSet()">GUARDAR SERIE</button>
+        <button class="btn-finish-exercise" onclick="finishExercise()">TERMINAR EJERCICIO</button>
+      </div>
+
+      <!-- Step 4: Session summary -->
+      <div id="entreno-step4" class="session-summary">
+        <div class="section-title" style="color:var(--accent);margin-bottom:24px;">SESIÓN COMPLETA</div>
+        <div>
+          <div class="summary-stat"><div class="val" id="sum-exercises">0</div><div class="lbl">Ejercicios</div></div>
+          <div class="summary-stat"><div class="val" id="sum-sets">0</div><div class="lbl">Series</div></div>
+          <div class="summary-stat"><div class="val" id="sum-volume">0</div><div class="lbl">Kg totales</div></div>
+        </div>
+        <button class="btn-finish-session" onclick="endSession()">VOLVER AL OVERVIEW</button>
+      </div>
+    </div>
+
+    <!-- Exercise search modal -->
+    <div class="modal-overlay" id="exercise-modal">
+      <div class="modal-box">
+        <h3>ELEGIR EJERCICIO</h3>
+        <input type="text" class="modal-search" id="modal-search" placeholder="Buscar ejercicio..." oninput="filterExercises()">
+        <div id="modal-exercise-list"></div>
+        <div class="modal-add-new" onclick="showAddExercise()">+ Agregar nuevo ejercicio</div>
+        <div id="modal-add-form" style="display:none;margin-top:12px;">
+          <input type="text" class="modal-search" id="new-ex-nombre" placeholder="Nombre del ejercicio">
+          <select class="modal-search" id="new-ex-grupo" style="margin-top:8px;">
+            <option value="">Grupo muscular...</option>
+            <option value="PECHO">PECHO</option>
+            <option value="ESPALDA">ESPALDA</option>
+            <option value="HOMBROS">HOMBROS</option>
+            <option value="BICEPS">BICEPS</option>
+            <option value="TRICEPS">TRICEPS</option>
+            <option value="PIERNAS">PIERNAS</option>
+            <option value="CORE">CORE</option>
+            <option value="OTRO">OTRO</option>
+          </select>
+          <button class="btn-save-set" style="margin-top:12px;" onclick="addNewExercise()">AGREGAR</button>
+        </div>
+        <button class="btn-finish-exercise" style="margin-top:12px;" onclick="closeExerciseModal()">CANCELAR</button>
+      </div>
+    </div>
+
+    <!-- FAB button (only visible during active session) -->
+    <button class="fab-add" id="fab-add" onclick="openExerciseModal()">+</button>
+
   </main>
 
   <script>
@@ -965,7 +1807,7 @@
 
     async function loadAPIData() {
       try {
-        const res = await fetch("http://localhost:5000/api/all", { signal: AbortSignal.timeout(8000) });
+        const res = await fetch("/api/all", { signal: AbortSignal.timeout(20000) });
         if (!res.ok) throw new Error("Server error");
         const json = await res.json();
         if (json.ok) {
@@ -973,16 +1815,19 @@
             gimnasio: Array.isArray(json.data.gimnasio) ? json.data.gimnasio : [],
             running: Array.isArray(json.data.running) ? json.data.running : [],
             antropometria: Array.isArray(json.data.antropometria) ? json.data.antropometria : [],
+            sueno: Array.isArray(json.data.sueno) ? json.data.sueno : [],
           };
           const hasGym = API_DATA.gimnasio.length > 0;
           const hasRun = API_DATA.running.length > 0;
           const hasAntro = API_DATA.antropometria.length > 0;
-          const anyData = hasGym || hasRun || hasAntro;
+          const hasSleep = API_DATA.sueno.length > 0;
+          const anyData = hasGym || hasRun || hasAntro || hasSleep;
           const src = json.sources || {};
           showConnectionBadge(anyData, json.updated_at, {
             gym: hasGym ? (src.gimnasio || 'sheets') : false,
             run: hasRun ? (src.running || 'sheets') : false,
             antro: hasAntro ? (src.antropometria || 'sheets') : false,
+            sleep: hasSleep ? (src.sueno || 'garmin') : false,
           });
           return anyData;
         }
@@ -1008,7 +1853,7 @@
               : '';
           return '<span style="color:var(--accent)">●</span> ' + label + srcTag;
         }
-        badge.innerHTML = dot(sources.gym, 'GYM') + " &nbsp;" + dot(sources.run, 'RUN') + " &nbsp;" + dot(sources.antro, 'ANTRO') + " &nbsp;· " + d.toLocaleTimeString('es-AR');
+        badge.innerHTML = dot(sources.gym, 'GYM') + " &nbsp;" + dot(sources.run, 'RUN') + " &nbsp;" + dot(sources.antro, 'ANTRO') + " &nbsp;" + dot(sources.sleep, 'SLEEP') + " &nbsp;· " + d.toLocaleTimeString('es-AR');
       } else {
         badge.innerHTML = '<span style="color:var(--muted)">○ MODO OFFLINE</span> · sin datos';
       }
@@ -1163,7 +2008,10 @@
       document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
       document.getElementById('tab-' + name).classList.add('active');
-      event.target.classList.add('active');
+      if (event && event.target) event.target.classList.add('active');
+      // Hide FAB when leaving entreno
+      const fab = document.getElementById('fab-add');
+      if (fab && name !== 'entreno') fab.style.display = 'none';
     }
 
     // ===== WEEK SELECTOR =====
@@ -1793,6 +2641,532 @@
       });
     }
 
+    // ===== CORRELATIONS (F-03) =====
+
+    async function loadCorrelations() {
+      try {
+        const res = await fetch("/api/correlaciones", { signal: AbortSignal.timeout(30000) });
+        if (!res.ok) return;
+        const json = await res.json();
+        if (!json.ok) return;
+        const data = json.data;
+
+        // Correlation 1: Running vs Gym (scatter)
+        if (data.running_vs_gym && data.running_vs_gym.length > 1) {
+          clearEmptyState('corrRunGymChart');
+          const points = data.running_vs_gym.map(d => ({ x: d.km_running, y: d.vol_gym }));
+
+          charts.corrRunGym = new Chart(document.getElementById('corrRunGymChart'), {
+            type: 'scatter',
+            data: {
+              datasets: [{
+                label: 'Semanas',
+                data: points,
+                backgroundColor: ACCENT + 'cc',
+                pointRadius: 6,
+                pointHoverRadius: 8,
+              }]
+            },
+            options: {
+              responsive: true, maintainAspectRatio: false,
+              plugins: { legend: { display: false } },
+              scales: {
+                x: { grid: gridConfig(), ticks: { color: MUTED },
+                  title: { display: true, text: 'km running / semana', color: MUTED } },
+                y: { grid: gridConfig(), ticks: { color: MUTED },
+                  title: { display: true, text: 'volumen gym', color: MUTED } }
+              }
+            }
+          });
+
+          // Auto-interpret
+          const n = points.length;
+          const avgX = points.reduce((s, p) => s + p.x, 0) / n;
+          const avgY = points.reduce((s, p) => s + p.y, 0) / n;
+          let num = 0, denX = 0, denY = 0;
+          points.forEach(p => {
+            num += (p.x - avgX) * (p.y - avgY);
+            denX += (p.x - avgX) ** 2;
+            denY += (p.y - avgY) ** 2;
+          });
+          const r = denX > 0 && denY > 0 ? num / Math.sqrt(denX * denY) : 0;
+          const interp = document.getElementById('corr-run-gym-interp');
+          const strength = Math.abs(r) > 0.7 ? 'Fuerte' : Math.abs(r) > 0.4 ? 'Moderada' : 'Débil';
+          const dir = r > 0 ? 'positiva' : 'negativa';
+          interp.textContent = strength + ' correlación ' + dir + ' (r=' + r.toFixed(2) + ') — ' +
+            (r < -0.3 ? 'Cuando corrés más, el volumen de gym tiende a bajar.' :
+             r > 0.3 ? 'Más running se asocia con más volumen de gym.' :
+             'No hay una relación clara entre km de running y volumen de gym.');
+        } else {
+          showEmptyState('corrRunGymChart', 'Necesitás datos de running + gym en semanas comunes.');
+        }
+
+        // Correlation 2: Body comp vs pace
+        if (data.composicion_vs_pace && data.composicion_vs_pace.length > 1) {
+          clearEmptyState('corrBodyPaceChart');
+          const labels = data.composicion_vs_pace.map(d => d.fecha.slice(5));
+
+          charts.corrBodyPace = new Chart(document.getElementById('corrBodyPaceChart'), {
+            type: 'line',
+            data: {
+              labels,
+              datasets: [
+                {
+                  label: 'Masa adiposa (kg)',
+                  data: data.composicion_vs_pace.map(d => d.masa_adiposa),
+                  borderColor: ACCENT3, backgroundColor: ACCENT3 + '15',
+                  tension: 0.3, pointRadius: 5, borderWidth: 2, yAxisID: 'y1',
+                },
+                {
+                  label: 'Pace prom (min/km)',
+                  data: data.composicion_vs_pace.map(d => d.pace_prom_semana),
+                  borderColor: ACCENT2, backgroundColor: ACCENT2 + '15',
+                  tension: 0.3, pointRadius: 5, borderWidth: 2, yAxisID: 'y2',
+                }
+              ]
+            },
+            options: {
+              responsive: true, maintainAspectRatio: false,
+              plugins: { legend: { labels: { color: '#888', font: { size: 10 }, boxWidth: 10 } } },
+              scales: {
+                x: { grid: gridConfig(), ticks: { color: MUTED } },
+                y1: { grid: gridConfig(), ticks: { color: ACCENT3 }, position: 'left',
+                  title: { display: true, text: 'kg', color: ACCENT3 } },
+                y2: { grid: { display: false }, ticks: { color: ACCENT2 }, position: 'right',
+                  reverse: true, title: { display: true, text: 'min/km', color: ACCENT2 } }
+              }
+            }
+          });
+        } else {
+          showEmptyState('corrBodyPaceChart', 'Necesitás 2+ mediciones ISAK + datos de running.');
+        }
+
+        // Correlation 3: Volume vs HR (placeholder)
+        if (data.volumen_vs_fc_reposo && data.volumen_vs_fc_reposo.length > 1) {
+          clearEmptyState('corrVolHRChart');
+          // Build chart when data is available
+        } else {
+          showEmptyState('corrVolHRChart', 'Datos de FC en reposo no disponibles aún. Requiere integración Garmin completa.');
+        }
+      } catch (e) {
+        showEmptyState('corrRunGymChart', 'No se pudo cargar correlaciones.');
+        showEmptyState('corrBodyPaceChart', 'No se pudo cargar correlaciones.');
+        showEmptyState('corrVolHRChart', 'No se pudo cargar correlaciones.');
+      }
+    }
+
+    // ===== WEEKLY SCORE (F-01) =====
+
+    async function loadWeeklyScore() {
+      try {
+        const res = await fetch("/api/score", { signal: AbortSignal.timeout(30000) });
+        if (!res.ok) return;
+        const json = await res.json();
+        if (!json.ok || json.score_actual == null) return;
+
+        // Show hero
+        const hero = document.getElementById('score-hero');
+        hero.style.display = 'flex';
+
+        // Score number with color
+        const scoreEl = document.getElementById('score-number');
+        scoreEl.textContent = json.score_actual;
+        scoreEl.className = 'score-number' + (json.score_actual >= 70 ? '' : json.score_actual >= 50 ? ' mid' : ' low');
+
+        // Delta
+        const deltaEl = document.getElementById('score-delta');
+        if (json.delta != null) {
+          const sign = json.delta >= 0 ? '+' : '';
+          deltaEl.textContent = sign + json.delta + ' vs semana anterior';
+          deltaEl.className = 'score-delta ' + (json.delta >= 0 ? 'up' : 'down');
+        }
+
+        // Breakdown
+        const breakdown = document.getElementById('score-breakdown');
+        breakdown.innerHTML = '';
+        const labels = { gimnasio: 'GYM', running: 'RUN', composicion: 'COMP', sueno: 'SLEEP' };
+        Object.entries(json.componentes || {}).forEach(([key, val]) => {
+          const chip = document.createElement('span');
+          chip.className = 'score-component';
+          chip.innerHTML = (labels[key] || key) + ' <span>' + val.score + '</span> · ' + Math.round(val.peso * 100) + '%';
+          breakdown.appendChild(chip);
+        });
+
+        // History chart
+        if (json.historico && json.historico.length > 1) {
+          document.getElementById('score-chart-card').style.display = 'block';
+          const labels = json.historico.map(h => h.semana.slice(5));
+          const scores = json.historico.map(h => h.score);
+
+          charts.scoreHistory = new Chart(document.getElementById('scoreHistoryChart'), {
+            type: 'line',
+            data: {
+              labels,
+              datasets: [{
+                label: 'Score',
+                data: scores,
+                borderColor: ACCENT,
+                backgroundColor: ACCENT + '15',
+                tension: 0.3, pointRadius: 5, borderWidth: 2, fill: true,
+              }]
+            },
+            options: {
+              responsive: true, maintainAspectRatio: false,
+              plugins: { legend: { display: false } },
+              scales: {
+                x: { grid: gridConfig(), ticks: { color: MUTED } },
+                y: { grid: gridConfig(), ticks: { color: MUTED }, min: 0, max: 100 }
+              }
+            }
+          });
+        }
+      } catch (e) {
+        // Score not available — silently skip
+      }
+    }
+
+    // ===== SLEEP CHARTS (F-04) =====
+
+    function processSleepData(rows) {
+      if (!rows || rows.length === 0) return null;
+      return rows.map(r => ({
+        fecha: r.fecha,
+        duracion: parseFloat(r.duracion_hs) || 0,
+        score: parseInt(r.score) || 0,
+        rem: parseInt(r.rem_min) || 0,
+        deep: parseInt(r.deep_min) || 0,
+        light: parseInt(r.light_min) || 0,
+        hrv: parseInt(r.hrv_noche) || 0,
+      })).filter(r => r.duracion > 0).sort((a, b) => a.fecha.localeCompare(b.fecha));
+    }
+
+    function buildSleepCharts(sleepData) {
+      if (!sleepData || sleepData.length === 0) {
+        showEmptyState('sleepDurationChart', 'Sin datos de sueño. Conectá Garmin para ver tus noches.');
+        showEmptyState('sleepScoreChart', 'Sin datos de sleep score.');
+        showEmptyState('sleepPhasesChart', 'Sin datos de fases del sueño.');
+        return;
+      }
+      clearEmptyState('sleepDurationChart');
+      clearEmptyState('sleepScoreChart');
+      clearEmptyState('sleepPhasesChart');
+
+      const labels = sleepData.map(d => d.fecha.slice(5)); // MM-DD
+
+      // Stats
+      const avgDur = sleepData.reduce((s, d) => s + d.duracion, 0) / sleepData.length;
+      const avgScore = Math.round(sleepData.reduce((s, d) => s + d.score, 0) / sleepData.length);
+      const avgDeep = Math.round(sleepData.reduce((s, d) => s + d.deep, 0) / sleepData.length);
+      const hrvVals = sleepData.filter(d => d.hrv > 0);
+      const avgHrv = hrvVals.length ? Math.round(hrvVals.reduce((s, d) => s + d.hrv, 0) / hrvVals.length) : 0;
+
+      updateStat('sleep-stat-avg', avgDur.toFixed(1));
+      updateStat('sleep-stat-score', avgScore);
+      updateStat('sleep-stat-deep', avgDeep);
+      updateStat('sleep-stat-hrv', avgHrv || null);
+
+      // Duration chart
+      charts.sleepDuration = new Chart(document.getElementById('sleepDurationChart'), {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Horas',
+            data: sleepData.map(d => d.duracion),
+            backgroundColor: sleepData.map(d => d.duracion >= 7 ? ACCENT2 + '99' : d.duracion >= 6 ? ORANGE + '99' : ACCENT3 + '99'),
+            borderWidth: 0,
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            annotation: false,
+          },
+          scales: {
+            x: { grid: gridConfig(), ticks: { color: MUTED, maxRotation: 45 } },
+            y: { grid: gridConfig(), ticks: { color: MUTED }, min: 0, max: 12,
+              title: { display: true, text: 'horas', color: MUTED } }
+          }
+        }
+      });
+
+      // Score chart
+      charts.sleepScore = new Chart(document.getElementById('sleepScoreChart'), {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Sleep Score',
+            data: sleepData.map(d => d.score || null),
+            borderColor: ACCENT,
+            backgroundColor: ACCENT + '15',
+            tension: 0.3, pointRadius: 4, borderWidth: 2, fill: true, spanGaps: true,
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: gridConfig(), ticks: { color: MUTED, maxRotation: 45 } },
+            y: { grid: gridConfig(), ticks: { color: MUTED }, min: 0, max: 100 }
+          }
+        }
+      });
+
+      // Phases stacked bar
+      charts.sleepPhases = new Chart(document.getElementById('sleepPhasesChart'), {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Deep',
+              data: sleepData.map(d => d.deep),
+              backgroundColor: ACCENT2,
+            },
+            {
+              label: 'REM',
+              data: sleepData.map(d => d.rem),
+              backgroundColor: ACCENT3,
+            },
+            {
+              label: 'Light',
+              data: sleepData.map(d => d.light),
+              backgroundColor: MUTED,
+            }
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { labels: { color: '#888', font: { size: 10 }, boxWidth: 10 } }
+          },
+          scales: {
+            x: { stacked: true, grid: gridConfig(), ticks: { color: MUTED, maxRotation: 45 } },
+            y: { stacked: true, grid: gridConfig(), ticks: { color: MUTED },
+              title: { display: true, text: 'min', color: MUTED } }
+          }
+        }
+      });
+    }
+
+    // ===== EXERCISE PROGRESSION (F-02) =====
+
+    function populateExerciseSelector() {
+      const select = document.getElementById('prog-exercise-select');
+      if (!select || !API_DATA || !API_DATA.gimnasio || API_DATA.gimnasio.length === 0) return;
+
+      // Group exercises by muscle group
+      const groups = {};
+      API_DATA.gimnasio.forEach(row => {
+        const ej = (row.ejercicio || '').trim().toUpperCase();
+        const gr = (row.grupo_muscular || 'OTRO').trim().toUpperCase();
+        if (ej && !groups[gr]) groups[gr] = new Set();
+        if (ej) groups[gr].add(ej);
+      });
+
+      // Build optgroups
+      select.innerHTML = '<option value="">— SELECCIONÁ UN EJERCICIO —</option>';
+      Object.keys(groups).sort().forEach(gr => {
+        const optgroup = document.createElement('optgroup');
+        optgroup.label = gr;
+        [...groups[gr]].sort().forEach(ej => {
+          const opt = document.createElement('option');
+          opt.value = ej;
+          opt.textContent = ej;
+          optgroup.appendChild(opt);
+        });
+        select.appendChild(optgroup);
+      });
+    }
+
+    function loadExerciseProgression(nombre) {
+      const content = document.getElementById('prog-content');
+      const trendBadge = document.getElementById('prog-trend-badge');
+      const stagBadge = document.getElementById('prog-stagnation-badge');
+      trendBadge.innerHTML = '';
+      stagBadge.innerHTML = '';
+
+      if (!nombre) {
+        content.style.display = 'none';
+        return;
+      }
+      content.style.display = 'block';
+
+      // Compute progression from already-loaded API_DATA
+      const rows = API_DATA.gimnasio.filter(r =>
+        (r.ejercicio || '').trim().toUpperCase() === nombre
+      );
+
+      if (rows.length === 0) {
+        content.style.display = 'none';
+        return;
+      }
+
+      // Group by fecha
+      const sesiones = {};
+      const allSets = [];
+      rows.forEach(r => {
+        const fecha = r.fecha;
+        if (!fecha) return;
+        if (!sesiones[fecha]) sesiones[fecha] = [];
+        const reps = parseInt(r.reps) || 0;
+        const peso = parseFloat(r.peso_kg) || 0;
+        sesiones[fecha].push({ reps, peso });
+        allSets.push({ fecha, reps, peso, vol: reps * peso });
+      });
+
+      const fechas = Object.keys(sesiones).sort();
+      const historico = fechas.map(fecha => {
+        const sets = sesiones[fecha];
+        const pesoMax = Math.max(...sets.map(s => s.peso));
+        const repsEnMax = Math.max(...sets.filter(s => s.peso === pesoMax).map(s => s.reps));
+        const volumen = sets.reduce((sum, s) => sum + s.reps * s.peso, 0);
+        const rm1 = pesoMax > 0 ? Math.round(pesoMax * (1 + repsEnMax / 30) * 10) / 10 : 0;
+        // Week key
+        const d = new Date(fecha);
+        const ws = new Date(d);
+        ws.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+        const semana = ws.toISOString().split('T')[0];
+        return { fecha, semana, pesoMax, repsEnMax, volumen: Math.round(volumen), rm1 };
+      });
+
+      // Stats
+      updateStat('prog-sessions', historico.length);
+
+      // PR peso
+      const prPeso = allSets.reduce((best, s) => s.peso > best.peso ? s : best, allSets[0]);
+      document.getElementById('prog-pr-peso').textContent = prPeso.peso + ' kg';
+      document.getElementById('prog-pr-peso-fecha').textContent = prPeso.fecha;
+
+      // PR volumen
+      const prVol = allSets.reduce((best, s) => s.vol > best.vol ? s : best, allSets[0]);
+      document.getElementById('prog-pr-vol').textContent = Math.round(prVol.vol).toLocaleString();
+      document.getElementById('prog-pr-vol-fecha').textContent = prVol.fecha;
+
+      // Best 1RM
+      const best1rm = Math.max(...historico.map(h => h.rm1));
+      document.getElementById('prog-1rm').textContent = best1rm + ' kg';
+
+      // Trend 4 weeks
+      if (historico.length >= 2) {
+        const recent = historico[historico.length - 1].pesoMax;
+        const idx4 = Math.max(0, historico.length - 5);
+        const old = historico[idx4].pesoMax;
+        const diff = recent - old;
+        const sign = diff >= 0 ? '+' : '';
+        const cls = diff > 0 ? 'up' : diff < 0 ? 'down' : 'flat';
+        trendBadge.className = 'prog-trend ' + cls;
+        trendBadge.textContent = sign + diff + ' kg vs 4 sem';
+      }
+
+      // Stagnation
+      if (historico.length >= 3) {
+        const last3 = historico.slice(-3).map(h => h.pesoMax);
+        if (new Set(last3).size === 1) {
+          stagBadge.className = 'prog-stagnation';
+          stagBadge.textContent = '⚠ ESTANCADO · MISMO PESO 3+ SESIONES';
+        }
+      }
+
+      // Charts
+      buildProgWeightChart(historico);
+      buildProgVolumeChart(historico);
+      buildProgPRTable(allSets);
+    }
+
+    function buildProgWeightChart(historico) {
+      destroyChart('progWeight');
+      const labels = historico.map(h => h.fecha.slice(5)); // MM-DD
+      const pesos = historico.map(h => h.pesoMax);
+      const rm1s = historico.map(h => h.rm1);
+
+      charts.progWeight = new Chart(document.getElementById('progWeightChart'), {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Peso máx (kg)',
+              data: pesos,
+              borderColor: ACCENT,
+              backgroundColor: ACCENT + '15',
+              tension: 0.3, pointRadius: 5, borderWidth: 2, fill: true,
+            },
+            {
+              label: '1RM estimado (Epley)',
+              data: rm1s,
+              borderColor: ACCENT3,
+              borderDash: [6, 4],
+              tension: 0.3, pointRadius: 3, borderWidth: 2, fill: false,
+            }
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { labels: { color: '#888', font: { size: 10 }, boxWidth: 12 } }
+          },
+          scales: {
+            x: { grid: gridConfig(), ticks: { color: MUTED, maxRotation: 45 } },
+            y: { grid: gridConfig(), ticks: { color: MUTED }, title: { display: true, text: 'kg', color: MUTED } }
+          }
+        }
+      });
+    }
+
+    function buildProgVolumeChart(historico) {
+      destroyChart('progVolume');
+      // Aggregate volume by week
+      const weekMap = {};
+      historico.forEach(h => {
+        if (!weekMap[h.semana]) weekMap[h.semana] = 0;
+        weekMap[h.semana] += h.volumen;
+      });
+      const weeks = Object.keys(weekMap).sort();
+      const vols = weeks.map(w => weekMap[w]);
+      const labels = weeks.map(w => w.slice(5));
+
+      charts.progVolume = new Chart(document.getElementById('progVolumeChart'), {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Volumen semanal',
+            data: vols,
+            backgroundColor: vols.map((_, i) => i === vols.length - 1 ? ACCENT2 : ACCENT2 + '66'),
+            borderWidth: 0,
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: gridConfig(), ticks: { color: MUTED } },
+            y: { grid: gridConfig(), ticks: { color: MUTED } }
+          }
+        }
+      });
+    }
+
+    function buildProgPRTable(allSets) {
+      const top5 = allSets.sort((a, b) => b.vol - a.vol).slice(0, 5);
+      const html = `<table class="prog-pr-table">
+        <thead><tr><th>#</th><th>Fecha</th><th>Peso</th><th>Reps</th><th>Volumen</th></tr></thead>
+        <tbody>${top5.map((s, i) => `
+          <tr>
+            <td>${i + 1}</td>
+            <td>${s.fecha}</td>
+            <td style="font-family:'Bebas Neue';font-size:18px">${s.peso} kg</td>
+            <td>${s.reps}</td>
+            <td>${Math.round(s.vol).toLocaleString()}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`;
+      document.getElementById('prog-pr-table-container').innerHTML = html;
+    }
+
     // ===== INIT =====
     window.addEventListener('load', async () => {
       const connected = await loadAPIData();
@@ -1920,6 +3294,23 @@
       renderExerciseTable();
       buildRunningCharts(runData);
       buildBodyCharts(antroRaw);
+
+      // F-04: Sleep charts
+      const sleepData = (connected && API_DATA) ? processSleepData(API_DATA.sueno) : null;
+      buildSleepCharts(sleepData);
+      if (sleepData && sleepData.length > 0) {
+        const avgSleep = (sleepData.reduce((s, d) => s + d.duracion, 0) / sleepData.length).toFixed(1);
+        updateStat('ov-stat-sleep', avgSleep);
+      }
+
+      // F-01: Weekly score + F-03: Correlations
+      if (connected) {
+        loadWeeklyScore();
+        loadCorrelations();
+      }
+
+      // F-02: Populate exercise progression selector
+      populateExerciseSelector();
     });
 
     // Helper: actualizar lista de actividades de running
@@ -1946,6 +3337,364 @@
         row.innerHTML = `<div><div class="run-date">${dateStr}</div><div class="run-pace">Pace ${paceMin}:${String(paceSec).padStart(2, '0')} · FC ${r.fc_prom}</div></div><div class="run-dist">${r.distancia.toFixed(1)} KM</div><div class="run-hr">${durMin}:${String(durSec).padStart(2, '0')} min</div>`;
         runCard.appendChild(row);
       });
+    }
+
+    // ===== ENTRENO TAB =====
+    let entrenoState = {
+      sesionId: null,
+      diaRutina: null,
+      fecha: null,
+      timerStart: null,
+      timerInterval: null,
+      currentExerciseId: null,
+      currentExerciseName: null,
+      sessionSets: [],     // all sets in this session: {ejercicio_id, ejercicio, reps, peso_kg, serie_id}
+      exerciseCatalog: [],  // from /api/gym/ejercicios
+    };
+
+    // Init date input to today
+    document.addEventListener('DOMContentLoaded', () => {
+      const dateInput = document.getElementById('entreno-date');
+      if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
+    });
+
+    function selectDay(day, btn) {
+      entrenoState.diaRutina = day;
+      document.querySelectorAll('.day-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('btn-start').disabled = false;
+    }
+
+    async function startSession() {
+      const fecha = document.getElementById('entreno-date').value;
+      if (!fecha || !entrenoState.diaRutina) return;
+
+      try {
+        const res = await fetch('/api/gym/sesiones', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ fecha, dia_rutina: entrenoState.diaRutina }),
+        });
+        const json = await res.json();
+        if (!json.ok) { alert(json.error); return; }
+
+        entrenoState.sesionId = json.data.id;
+        entrenoState.fecha = fecha;
+        entrenoState.sessionSets = [];
+
+        // Load exercise catalog
+        await loadExerciseCatalog();
+
+        // Switch to step 2
+        document.getElementById('entreno-step1').style.display = 'none';
+        document.getElementById('entreno-step2').style.display = 'block';
+        document.getElementById('fab-add').style.display = 'block';
+        document.getElementById('entreno-day-label').textContent = 'DÍA ' + entrenoState.diaRutina;
+        document.getElementById('entreno-date-label').textContent = ' · ' + fecha;
+
+        // Start timer
+        entrenoState.timerStart = Date.now();
+        entrenoState.timerInterval = setInterval(updateTimer, 1000);
+        renderExerciseCards();
+      } catch (e) {
+        alert('Error al crear sesión: ' + e.message);
+      }
+    }
+
+    function updateTimer() {
+      if (!entrenoState.timerStart) return;
+      const elapsed = Math.floor((Date.now() - entrenoState.timerStart) / 1000);
+      const min = Math.floor(elapsed / 60);
+      const sec = elapsed % 60;
+      document.getElementById('entreno-timer').textContent =
+        String(min).padStart(2, '0') + ':' + String(sec).padStart(2, '0');
+    }
+
+    async function loadExerciseCatalog() {
+      try {
+        const res = await fetch('/api/gym/ejercicios');
+        const json = await res.json();
+        entrenoState.exerciseCatalog = json.ok ? json.data : [];
+      } catch (e) {
+        entrenoState.exerciseCatalog = [];
+      }
+    }
+
+    function renderExerciseCards() {
+      const container = document.getElementById('entreno-exercise-list');
+      container.innerHTML = '';
+
+      // Group sets by exercise
+      const byExercise = {};
+      entrenoState.sessionSets.forEach(s => {
+        if (!byExercise[s.ejercicio]) byExercise[s.ejercicio] = [];
+        byExercise[s.ejercicio].push(s);
+      });
+
+      Object.entries(byExercise).forEach(([name, sets]) => {
+        const card = document.createElement('div');
+        card.className = 'exercise-card';
+        card.onclick = () => openSetLogger(sets[0].ejercicio_id, name);
+
+        const lastSet = sets[sets.length - 1];
+        let chipsHtml = sets.map(s => `<span class="set-chip">${s.peso_kg}×${s.reps}</span>`).join('');
+
+        card.innerHTML = `
+          <div class="ex-name">${name}</div>
+          <div class="ex-meta">${sets.length} serie${sets.length > 1 ? 's' : ''} · último: ${lastSet.peso_kg}kg × ${lastSet.reps}</div>
+          <div class="ex-sets-chips">${chipsHtml}</div>
+        `;
+        container.appendChild(card);
+      });
+
+      if (Object.keys(byExercise).length === 0) {
+        container.innerHTML = '<div style="text-align:center;color:var(--muted);font-family:DM Mono,monospace;font-size:12px;padding:40px 0;">Tocá + para agregar tu primer ejercicio</div>';
+      }
+    }
+
+    // Exercise modal
+    function openExerciseModal() {
+      document.getElementById('exercise-modal').classList.add('open');
+      document.getElementById('modal-search').value = '';
+      document.getElementById('modal-add-form').style.display = 'none';
+      renderModalExercises();
+      setTimeout(() => document.getElementById('modal-search').focus(), 100);
+    }
+
+    function closeExerciseModal() {
+      document.getElementById('exercise-modal').classList.remove('open');
+    }
+
+    function renderModalExercises(filter = '') {
+      const container = document.getElementById('modal-exercise-list');
+      container.innerHTML = '';
+      const lowerFilter = filter.toLowerCase();
+
+      // Group by muscle group
+      const groups = {};
+      entrenoState.exerciseCatalog.forEach(e => {
+        if (lowerFilter && !e.nombre.toLowerCase().includes(lowerFilter)) return;
+        const g = e.grupo_muscular || 'OTRO';
+        if (!groups[g]) groups[g] = [];
+        groups[g].push(e);
+      });
+
+      Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0])).forEach(([group, exercises]) => {
+        const title = document.createElement('div');
+        title.className = 'modal-group-title';
+        title.textContent = group;
+        container.appendChild(title);
+
+        exercises.forEach(e => {
+          const item = document.createElement('div');
+          item.className = 'modal-exercise-item';
+          item.textContent = e.nombre;
+          item.onclick = () => { closeExerciseModal(); openSetLogger(e.id, e.nombre); };
+          container.appendChild(item);
+        });
+      });
+    }
+
+    function filterExercises() {
+      renderModalExercises(document.getElementById('modal-search').value);
+    }
+
+    function showAddExercise() {
+      document.getElementById('modal-add-form').style.display = 'block';
+      document.getElementById('new-ex-nombre').focus();
+    }
+
+    async function addNewExercise() {
+      const nombre = document.getElementById('new-ex-nombre').value.trim();
+      const grupo = document.getElementById('new-ex-grupo').value;
+      if (!nombre || !grupo) { alert('Completá nombre y grupo muscular'); return; }
+
+      try {
+        const res = await fetch('/api/gym/ejercicios', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ nombre, grupo_muscular: grupo }),
+        });
+        const json = await res.json();
+        if (!json.ok) { alert(json.error); return; }
+
+        await loadExerciseCatalog();
+        closeExerciseModal();
+        openSetLogger(json.data.id, json.data.nombre);
+      } catch (e) {
+        alert('Error: ' + e.message);
+      }
+    }
+
+    // Set logger
+    async function openSetLogger(ejercicioId, ejercicioNombre) {
+      entrenoState.currentExerciseId = ejercicioId;
+      entrenoState.currentExerciseName = ejercicioNombre;
+
+      document.getElementById('sl-exercise-name').textContent = ejercicioNombre;
+
+      // Pre-fill from last session or current session sets for this exercise
+      const currentSets = entrenoState.sessionSets.filter(s => s.ejercicio_id === ejercicioId);
+      let prefillPeso = 0, prefillReps = 0;
+
+      if (currentSets.length > 0) {
+        const last = currentSets[currentSets.length - 1];
+        prefillPeso = last.peso_kg;
+        prefillReps = last.reps;
+      } else {
+        // Try to get last session data from API
+        try {
+          const res = await fetch('/api/gym/ejercicio/' + encodeURIComponent(ejercicioNombre));
+          const json = await res.json();
+          if (json.ok && json.historico && json.historico.length > 0) {
+            const lastSession = json.historico[json.historico.length - 1];
+            prefillPeso = lastSession.peso_max;
+            prefillReps = lastSession.reps_en_max;
+            document.getElementById('sl-last-info').textContent =
+              'Última vez: ' + lastSession.peso_max + 'kg × ' + lastSession.reps_en_max + ' (' + lastSession.fecha + ')';
+          } else {
+            document.getElementById('sl-last-info').textContent = 'Primera vez con este ejercicio';
+          }
+        } catch (e) {
+          document.getElementById('sl-last-info').textContent = '';
+        }
+      }
+
+      document.getElementById('sl-peso').value = prefillPeso;
+      document.getElementById('sl-reps').value = prefillReps;
+
+      // Render chips for sets already logged this session
+      renderSetChips();
+
+      // Show set logger, hide exercise list
+      document.getElementById('entreno-step2').style.display = 'none';
+      document.getElementById('entreno-step3').style.display = 'block';
+      document.getElementById('entreno-step3').classList.add('active');
+      document.getElementById('fab-add').style.display = 'none';
+    }
+
+    function renderSetChips() {
+      const container = document.getElementById('sl-chips');
+      const currentSets = entrenoState.sessionSets.filter(
+        s => s.ejercicio_id === entrenoState.currentExerciseId
+      );
+      container.innerHTML = currentSets.map(
+        s => `<span class="set-chip">${s.peso_kg}×${s.reps}</span>`
+      ).join('');
+    }
+
+    function stepValue(inputId, delta) {
+      const input = document.getElementById(inputId);
+      let val = parseFloat(input.value) || 0;
+      val = Math.max(0, val + delta);
+      input.value = val;
+    }
+
+    async function saveSet() {
+      const peso = parseFloat(document.getElementById('sl-peso').value) || 0;
+      const reps = parseInt(document.getElementById('sl-reps').value) || 0;
+
+      if (reps <= 0) { alert('Ingresá las repeticiones'); return; }
+
+      try {
+        const res = await fetch('/api/gym/series', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            sesion_id: entrenoState.sesionId,
+            ejercicio_id: entrenoState.currentExerciseId,
+            reps,
+            peso_kg: peso,
+          }),
+        });
+        const json = await res.json();
+        if (!json.ok) { alert(json.error); return; }
+
+        // Add to local state (values do NOT reset — UX spec requirement)
+        entrenoState.sessionSets.push({
+          serie_id: json.data.id,
+          ejercicio_id: entrenoState.currentExerciseId,
+          ejercicio: entrenoState.currentExerciseName,
+          reps,
+          peso_kg: peso,
+        });
+
+        renderSetChips();
+      } catch (e) {
+        alert('Error: ' + e.message);
+      }
+    }
+
+    function finishExercise() {
+      document.getElementById('entreno-step3').style.display = 'none';
+      document.getElementById('entreno-step3').classList.remove('active');
+      document.getElementById('entreno-step2').style.display = 'block';
+      document.getElementById('fab-add').style.display = 'block';
+      entrenoState.currentExerciseId = null;
+      entrenoState.currentExerciseName = null;
+      renderExerciseCards();
+    }
+
+    function showSummary() {
+      if (entrenoState.sessionSets.length === 0) {
+        if (confirm('No registraste series. ¿Cancelar la sesión?')) { endSession(); }
+        return;
+      }
+
+      // Calculate stats
+      const exercises = new Set(entrenoState.sessionSets.map(s => s.ejercicio));
+      const totalSets = entrenoState.sessionSets.length;
+      const totalVol = Math.round(entrenoState.sessionSets.reduce((sum, s) => sum + s.peso_kg * s.reps, 0));
+
+      document.getElementById('sum-exercises').textContent = exercises.size;
+      document.getElementById('sum-sets').textContent = totalSets;
+      document.getElementById('sum-volume').textContent = totalVol.toLocaleString();
+
+      document.getElementById('entreno-step2').style.display = 'none';
+      document.getElementById('fab-add').style.display = 'none';
+      document.getElementById('entreno-step4').style.display = 'block';
+      document.getElementById('entreno-step4').classList.add('active');
+    }
+
+    function endSession() {
+      // Reset state
+      clearInterval(entrenoState.timerInterval);
+      entrenoState.sesionId = null;
+      entrenoState.diaRutina = null;
+      entrenoState.sessionSets = [];
+      entrenoState.timerStart = null;
+      entrenoState.currentExerciseId = null;
+
+      // Reset UI
+      document.getElementById('entreno-step1').style.display = 'block';
+      document.getElementById('entreno-step2').style.display = 'none';
+      document.getElementById('entreno-step3').style.display = 'none';
+      document.getElementById('entreno-step3').classList.remove('active');
+      document.getElementById('entreno-step4').style.display = 'none';
+      document.getElementById('entreno-step4').classList.remove('active');
+      document.getElementById('fab-add').style.display = 'none';
+      document.getElementById('entreno-timer').textContent = '00:00';
+      document.querySelectorAll('.day-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('btn-start').disabled = true;
+      document.getElementById('entreno-date').value = new Date().toISOString().split('T')[0];
+
+      // Switch to overview and reload data
+      switchTabDirect('overview');
+      loadAPIData();
+    }
+
+    // switchTab without event.target (for programmatic use)
+    function switchTabDirect(name) {
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(b => {
+        b.classList.remove('active');
+        if (b.textContent.trim() === {overview:'OVERVIEW',gym:'GIMNASIO',running:'RUNNING',body:'COMPOSICIÓN',entreno:'ENTRENO',sleep:'SUEÑO',analysis:'ANÁLISIS'}[name]) {
+          b.classList.add('active');
+        }
+      });
+      document.getElementById('tab-' + name).classList.add('active');
+      // Hide FAB when not in entreno
+      if (name !== 'entreno') document.getElementById('fab-add').style.display = 'none';
     }
   </script>
 </body>
