@@ -17,7 +17,7 @@ Tabs: `OVERVIEW · GIMNASIO · RUNNING · COMPOSICIÓN · ENTRENO · SUEÑO · A
 ## Arrancar
 
 ```bash
-python server1.py
+python server.py
 ```
 
 Abrí **http://localhost:5000**.
@@ -108,7 +108,7 @@ pace promedio.
 ## Estructura
 
 ```
-server1.py          Backend Flask — todos los endpoints
+server.py          Backend Flask — todos los endpoints
 models.py           SQLAlchemy: Ejercicio, Sesion, Serie
 dashboard_v3.html   Frontend completo (HTML + CSS + JS en un archivo)
 garmin_client.py    Cliente de Garmin Connect

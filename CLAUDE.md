@@ -11,7 +11,7 @@ dentro del gimnasio**, así que velocidad y simplicidad importan más que featur
 ## Cómo correrlo
 
 ```bash
-python server1.py
+python server.py
 ```
 
 Abre en **http://localhost:5000**. Flask dev server con `debug=True` (auto-reload).
@@ -27,7 +27,7 @@ garminconnect pdfplumber`
 ## Arquitectura
 
 ```
-server1.py          Backend Flask — TODOS los endpoints. No hay otro server.
+server.py          Backend Flask — TODOS los endpoints. No hay otro server.
 models.py           SQLAlchemy: Ejercicio, Sesion, Serie + helpers. Auto-init al importar.
 dashboard_v3.html   Frontend COMPLETO (~3700 líneas): HTML + CSS + JS en un solo archivo.
 garmin_client.py    Wrapper de Garmin Connect (running + sueño) vía garth.
@@ -74,7 +74,7 @@ el frontend y los endpoints de análisis no tengan que cambiar.
 
 ---
 
-## Endpoints (todos en `server1.py`)
+## Endpoints (todos en `server.py`)
 
 **Lectura agregada**
 - `GET /` → sirve `dashboard_v3.html` con headers no-cache
@@ -137,7 +137,7 @@ Estas restricciones vienen del usuario y ya causaron correcciones. Respetarlas.
 
 1. **No cambiar el sistema visual** (colores, fuentes) sin instrucción explícita.
 2. **Frontend en un solo archivo HTML.** No crear `.css` ni `.js` separados.
-3. **Toda la lógica de DB va en `models.py`.** `server1.py` importa y consulta.
+3. **Toda la lógica de DB va en `models.py`.** `server.py` importa y consulta.
 4. **SQLAlchemy core, NO Flask-SQLAlchemy** — mantiene portabilidad para migrar a Supabase.
 5. **Todo endpoint maneja datos faltantes con gracia**: devolver `[]` o `{"ok": false, "error": ...}`, nunca crashear.
 6. **El dashboard debe funcionar offline** después de cualquier cambio.
@@ -167,7 +167,8 @@ de Google Cloud / service account.
 
 ## Notas operativas
 
-- El archivo se llama `server1.py`, no `server.py`. Varios docstrings viejos siguen diciendo `server.py`.
+- El backend se llamó `server1.py` por un tiempo y volvió a `server.py` (commit `ff2b2b7`).
+  Si ves `server1.py` en algún lado, es una referencia vieja.
 - Config por variables de entorno vía `.env`: `SPREADSHEET_ID`, `CREDENTIALS_FILE`, `DATABASE_URL`.
 - Gitignored y **nunca commitear**: `credentials.json`, `.env`, `*.db`, `pdfs/`.
 - Tokens de Garmin en `~/.garth/`. Si expiran: `python garmin_setup.py`.
