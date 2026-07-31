@@ -147,6 +147,49 @@ Estas restricciones vienen del usuario y ya causaron correcciones. Respetarlas.
 
 ---
 
+## Flujo de trabajo git
+
+Este repo lo edita Claude, en sesiones que no comparten memoria entre sí. El protocolo
+existe para que ninguna sesión pise a otra ni trabaje sobre una copia vieja.
+
+**Al empezar cualquier tarea, siempre:**
+
+```bash
+git fetch
+git status
+```
+
+`master` local tiene que estar en el **mismo commit** que `origin/master`. Si está atrás,
+`git checkout master && git merge --ff-only origin/master` antes de tocar nada.
+Ya pasó una vez que el local quedó 3 meses desactualizado y se documentó un archivo con
+el nombre viejo — de ahí viene esta regla.
+
+**Nunca commitear directo en `master`.** Una rama por tarea, creada desde un `master`
+fresco:
+
+```bash
+git checkout -b feat/nombre-corto master
+```
+
+Prefijos: `feat/` · `fix/` · `refactor/` · `docs/`
+
+**Ramas cortas.** Al terminar la tarea: merge a `master`, push, borrar la rama. No dejar
+ramas vivas entre sesiones — una rama larga es una divergencia silenciosa esperando pasar.
+
+```bash
+git checkout master && git merge feat/nombre-corto
+git push origin master
+git branch -d feat/nombre-corto
+```
+
+**Nunca commitear** `credentials.json`, `.env`, `*.db` ni `pdfs/` — están en `.gitignore`
+y contienen datos personales o secretos. Verificar con `git status` antes de `git add -A`.
+
+**Verificar antes de cerrar:** levantar `python server.py` y confirmar que `/` y
+`/api/all` devuelven 200, y que el banner muestra Garmin y los PDFs.
+
+---
+
 ## Estado actual
 
 Todo lo del roadmap (F-01 a F-04) está implementado y la migración a SQLite está hecha:
