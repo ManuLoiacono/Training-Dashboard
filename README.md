@@ -1,145 +1,170 @@
-# MANU///LOGS — Guía de configuración
+# MANU///LOGS
 
-## Lo que vas a tener al final
-Un dashboard que corre en `http://localhost:5000` y se actualiza automáticamente cada vez que cargás datos en Google Sheets.
+Dashboard personal de rendimiento deportivo. Corre local en `http://localhost:5000` y
+cruza cuatro fuentes de datos en una sola vista:
 
----
+| Dominio | De dónde sale |
+|---|---|
+| **Gimnasio** | SQLite local — se carga desde el tab ENTRENO |
+| **Running** | Garmin Connect (automático) |
+| **Composición corporal** | PDFs de antropometría ISAK en `pdfs/` |
+| **Sueño** | Garmin Connect (automático) |
 
-## PASO 1 — Crear el Google Sheet nuevo
-
-1. Andá a [sheets.google.com](https://sheets.google.com) y creá un archivo nuevo
-2. Renombralo como `MANU_LOGS` (o como quieras)
-3. Creá estas 3 hojas (tabs en la parte de abajo):
-
-### Hoja: `gimnasio`
-La primera fila tiene que ser exactamente así (copiá y pegá):
-```
-fecha	dia	ejercicio	grupo_muscular	serie	reps	peso_kg	notas
-```
-
-**Ejemplo de cómo cargar:**
-```
-2025-09-02	1	Press Banca	Pecho	1	7	70	
-2025-09-02	1	Press Banca	Pecho	2	6	70	
-2025-09-02	1	Press Banca	Pecho	3	5	70	
-2025-09-02	1	Dominadas	Espalda	1	10	0	
-```
-
-**Grupos musculares sugeridos:** Pecho, Espalda, Pierna, Hombro, Bicep, Tricep, Core
-
-### Hoja: `running`
-Primera fila:
-```
-fecha	distancia_km	tiempo_min	pace_min_km	fc_prom	fc_max	desnivel_m	notas
-```
-
-**Ejemplo:**
-```
-2025-09-03	8.2	44.1	5.22	156	178	45	Fartlek
-2025-09-06	5.0	25.5	5.10	162	181	20	Ritmo
-```
-
-### Hoja: `antropometria`
-Primera fila:
-```
-fecha	peso_kg	masa_muscular_kg	masa_adiposa_kg	masa_osea_kg	masa_residual_kg	masa_piel_kg	cintura_cm	brazo_relajado_cm	brazo_flex_cm	metabolismo_basal	gasto_total
-```
-
-**Cargá tu primera medición (datos del informe de feb 2026):**
-```
-2026-02-13	77.50	38.93	17.83	8.78	8.26	3.71	80.00	34.70	38.50	1755	2809
-```
+Tabs: `OVERVIEW · GIMNASIO · RUNNING · COMPOSICIÓN · ENTRENO · SUEÑO · ANÁLISIS`
 
 ---
 
-## PASO 2 — Configurar Google Sheets API (gratis)
-
-### 2.1 Crear proyecto en Google Cloud
-
-1. Andá a [console.cloud.google.com](https://console.cloud.google.com)
-2. Hacé click en el selector de proyectos (arriba a la izquierda) → **"Nuevo proyecto"**
-3. Nombre: `manu-logs` → **Crear**
-4. Asegurate de que el proyecto nuevo esté seleccionado
-
-### 2.2 Habilitar la API de Google Sheets
-
-1. En el menú izquierdo: **APIs y servicios** → **Biblioteca**
-2. Buscá **"Google Sheets API"**
-3. Hacé click → **Habilitar**
-
-### 2.3 Crear credenciales (cuenta de servicio)
-
-1. En el menú: **APIs y servicios** → **Credenciales**
-2. Click en **"+ Crear credenciales"** → **"Cuenta de servicio"**
-3. Nombre: `manu-logs-reader` → **Crear y continuar**
-4. Rol: **Visualizador** → **Continuar** → **Listo**
-5. Hacé click en la cuenta de servicio recién creada
-6. Andá a la pestaña **"Claves"**
-7. **"Agregar clave"** → **"Crear clave nueva"** → **JSON** → **Crear**
-8. Se descarga un archivo `.json` → **renombralo `credentials.json`**
-
-### 2.4 Compartir el Sheet con la cuenta de servicio
-
-1. Abrí el archivo `credentials.json` descargado
-2. Buscá el campo `"client_email"` — algo como:
-   `manu-logs-reader@manu-logs-123456.iam.gserviceaccount.com`
-3. Andá a tu Google Sheet → **"Compartir"** (arriba a la derecha)
-4. Pegá ese email → permiso **"Lector"** → **Enviar**
-
----
-
-## PASO 3 — Configurar el proyecto local
-
-### 3.1 Estructura de carpetas
-```
-manu-logs/
-├── dashboard.html      ← el dashboard
-├── server.py           ← el servidor
-├── credentials.json    ← el que descargaste de Google Cloud
-└── README.md           ← esta guía
-```
-
-### 3.2 Obtener el ID del Spreadsheet
-
-La URL de tu Sheet es algo como:
-```
-https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms/edit
-```
-El ID es la parte larga entre `/d/` y `/edit`. Abrí `server.py` y reemplazá:
-```python
-SPREADSHEET_ID = "TU_SPREADSHEET_ID_ACA"
-```
-
-### 3.3 Instalar dependencias Python
-
-Abrí una terminal en la carpeta `manu-logs/` y corré:
-```bash
-pip install flask flask-cors google-auth google-auth-oauthlib google-auth-httplib2 google-api-python-client
-```
-
----
-
-## PASO 4 — Correr el dashboard
+## Arrancar
 
 ```bash
-python server.py
+python server1.py
 ```
 
-Abrí el browser en: **http://localhost:5000**
+Abrí **http://localhost:5000**.
 
-Cada vez que cargues datos en el Sheet y recargues el browser, el dashboard se actualiza.
+El banner de arranque te dice el estado de cada fuente:
+
+```
+  Garmin Connect: [OK] CONFIGURADO
+  PDFs antropometria: 2 encontrados
+```
+
+Si algo dice `[X]`, mirá la sección correspondiente más abajo. El dashboard **funciona
+igual** aunque falten fuentes: cada una tiene su fallback y los tabs sin datos muestran
+un estado vacío en vez de romperse.
 
 ---
 
-## TIPS para cargar datos desde el celular
+## Instalación
 
-- Guardá la URL del Google Sheet como acceso directo en la pantalla de inicio
-- Usá siempre el formato de fecha `AAAA-MM-DD` (ej: `2025-09-02`)
-- Cada serie es una fila — tarda ~10 segundos por ejercicio pero después podés ver todo en el dashboard
-- Para dominadas o fondos sin lastre, poné `0` en `peso_kg`
+### 1. Dependencias
+
+```bash
+pip install flask flask-cors python-dotenv sqlalchemy garminconnect pdfplumber
+pip install google-api-python-client google-auth google-auth-oauthlib google-auth-httplib2
+```
+
+Los últimos dos renglones (Google) solo hacen falta si vas a usar el fallback a Google
+Sheets — ver la sección *Google Sheets* al final.
+
+### 2. Base de datos
+
+No hay que hacer nada. `models.py` crea `manu_logs.db` y sus tablas automáticamente la
+primera vez que arranca el server.
+
+### 3. Garmin Connect (running + sueño)
+
+Una sola vez:
+
+```bash
+python garmin_setup.py
+```
+
+Guarda los tokens en `~/.garth/`. Se auto-refrescan solos; si algún día expiran, volvé a
+correr ese mismo comando.
+
+### 4. PDFs de antropometría
+
+Tirá los informes ISAK en la carpeta `pdfs/`. El parser los detecta solos, extrae ~25
+variables de cada uno y los ordena por fecha. No hay que registrarlos en ningún lado.
+
+Para probar el parseo de un PDF suelto:
+
+```bash
+python antro_parser.py pdfs/informe.pdf
+```
 
 ---
 
-## PRÓXIMO PASO — Garmin Connect
+## Cargar entrenamientos — tab ENTRENO
 
-Una vez que esto funcione, el siguiente paso es un script que descarga tus actividades de Garmin automáticamente cada vez que corrés `server.py`. La API es gratuita para uso personal.
+Diseñado para usar en el celular, en el gimnasio, con **3 taps**:
+
+1. Elegís (o creás) la sesión del día
+2. Elegís el ejercicio
+3. Cargás reps y peso
+
+El número de serie se calcula solo. Las series se pueden editar o borrar después.
+El catálogo de ejercicios es tuyo: agregás uno nuevo desde el mismo tab y queda guardado
+con su grupo muscular.
+
+---
+
+## Qué calcula
+
+**Score semanal (1-100)** — ponderado entre gimnasio (35%), running (30%), composición
+(20%) y sueño (15%). Si falta alguna fuente, los pesos se redistribuyen entre las que sí
+están.
+
+**Por ejercicio** — peso máximo por sesión, volumen, 1RM estimado (fórmula de Epley),
+PRs de peso y de volumen, top 5 series, tendencia a 4 semanas y alerta de estancamiento
+(mismo peso máximo tres sesiones seguidas).
+
+**Correlaciones** — km de running vs volumen de gimnasio por semana, y masa adiposa vs
+pace promedio.
+
+---
+
+## Estructura
+
+```
+server1.py          Backend Flask — todos los endpoints
+models.py           SQLAlchemy: Ejercicio, Sesion, Serie
+dashboard_v3.html   Frontend completo (HTML + CSS + JS en un archivo)
+garmin_client.py    Cliente de Garmin Connect
+garmin_setup.py     Auth de Garmin (correr una vez)
+antro_parser.py     Parser de PDFs ISAK
+migrate_sheets.py   Script one-shot de migración Sheets → SQLite (ya ejecutado)
+manu_logs.db        Base de datos (no se commitea)
+pdfs/               Informes antropométricos (no se commitean)
+```
+
+Nada de esto se sube al repo: `credentials.json`, `.env`, `*.db`, `pdfs/`.
+Son datos personales o secretos.
+
+### Configuración opcional (`.env`)
+
+```
+DATABASE_URL=sqlite:///manu_logs.db
+SPREADSHEET_ID=...
+CREDENTIALS_FILE=credentials.json
+```
+
+---
+
+## Google Sheets (legacy)
+
+El proyecto **arrancó** leyendo todo de Google Sheets. El gimnasio ya migró a SQLite,
+pero Sheets sigue funcionando como fallback para running y antropometría si Garmin o los
+PDFs no están disponibles.
+
+Si querés usarlo, hace falta una service account de Google Cloud:
+
+1. Creá un proyecto en [console.cloud.google.com](https://console.cloud.google.com)
+2. **APIs y servicios → Biblioteca** → habilitá **Google Sheets API**
+3. **Credenciales → Crear credenciales → Cuenta de servicio**, rol *Visualizador*
+4. En la cuenta creada: pestaña **Claves → Agregar clave → JSON**. Guardalo como
+   `credentials.json` en la raíz del proyecto
+5. Abrí ese JSON, copiá el `client_email` y compartí tu Google Sheet con ese mail como
+   **Lector**
+6. Poné el ID del spreadsheet (la parte larga de la URL entre `/d/` y `/edit`) en el
+   `.env` como `SPREADSHEET_ID`
+
+Las hojas tienen que llamarse `gimnasio`, `running` y `antropometria`, con estos headers
+en la primera fila:
+
+```
+gimnasio       fecha  dia  ejercicio  grupo_muscular  serie  reps  peso_kg  notas
+running        fecha  distancia_km  tiempo_min  pace_min_km  fc_prom  fc_max  desnivel_m  notas
+antropometria  fecha  peso_kg  masa_muscular_kg  masa_adiposa_kg  masa_osea_kg  masa_residual_kg
+               masa_piel_kg  cintura_cm  brazo_relajado_cm  brazo_flex_cm  metabolismo_basal  gasto_total
+```
+
+Formato de fecha siempre `AAAA-MM-DD`.
+
+---
+
+## Desarrollo
+
+`CLAUDE.md` tiene el contexto técnico completo: arquitectura, endpoints, modelo de datos,
+sistema de diseño y las reglas del proyecto. Leelo antes de tocar código.
