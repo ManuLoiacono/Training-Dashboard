@@ -291,16 +291,83 @@ Tres arreglos, con backup en `manu_logs.db.backup-20260731-234805`:
 
 Si aparecen números de volumen que no cierran con datos viejos, es por (1).
 
-**Próximos pasos:**
-1. Botón de confirmar en la bandeja: pasar de `mensajes_parseados` a `sesiones`/`series`
-2. Migración a Supabase (Fase 2) — por eso la regla 4
-
 ### Sobre el 21/03/2026
 
 Las 7 sesiones migradas tienen fechas concentradas y algunas con muchas series
 (la 5 tiene 33). Puede ser un artefacto de la migración desde Sheets, sin confirmar.
 **No tocar sin preguntar** — las sesiones 9 y 10 de esa fecha son carga manual real
 desde ENTRENO, con pesos que no aparecen en ninguna otra.
+
+---
+
+## Plan — próximos pasos
+
+Estado al 01/08/2026. Los pasos están en orden: **1 es el siguiente**, y 2 depende de
+haber usado el bot un tiempo. Cada uno lista las decisiones que **hay que preguntarle a
+Manuel** antes de codear — no asumirlas.
+
+### Paso 0 — antes de empezar cualquier cosa
+
+Preguntarle **cómo se portó el bot**. Todo el paso 1 depende de que el parser sea
+confiable, y la única forma de saberlo son sus mensajes reales. Para ver qué entró:
+
+```bash
+curl -s "http://localhost:5000/api/mensajes?limite=50"
+```
+
+Los mensajes guardan `texto_original` junto al parse, así que se puede auditar dónde
+falló sin depender de que él se acuerde.
+
+### Paso 1 — botón de confirmar (el siguiente)
+
+Pasar de `mensajes_parseados` a `sesiones` + `series` de verdad. Es lo que convierte la
+bandeja en carga real.
+
+**Alcance:**
+- `POST /api/mensajes/<id>/confirmar` → crea las series, marca `estado="confirmado"`
+- `POST /api/mensajes/<id>/descartar` → `estado="descartado"`, no escribe nada
+- Botones en el panel del tab ENTRENO (ya existe, hoy es de solo lectura)
+- `numero_serie` se calcula solo, igual que en `POST /api/gym/series`
+
+**Decisiones pendientes — preguntar antes de codear:**
+
+1. **¿Varios mensajes del mismo día son una sesión o varias?** Si manda banca, después
+   dominadas y después remo en tres mensajes, lo natural es **una sesión por fecha**,
+   reusando la del día si existe. Confirmarlo — afecta cómo quedan agrupados los datos.
+2. **¿Qué fecha usa?** La de recepción del mensaje (`recibido_en`) es lo simple, pero si
+   carga a la noche lo del día anterior queda mal. ¿Se puede decir "ayer" en el mensaje?
+3. **¿Qué pasa con un ejercicio sin match?** Hoy es un callejón sin salida. Opciones:
+   bloquear la confirmación hasta resolverlo, o dejar confirmar solo los que matchearon.
+   **No crear el ejercicio automáticamente** — eso es lo que partió `PB INCL MANC` en dos.
+
+### Paso 2 — ajustes del parser con datos reales
+
+Recién después de usarlo. Tomar los mensajes donde falló y ajustar el prompt de
+`message_parser.py`. Un nit ya detectado: con un conteo de series incoherente
+("3 series" pero 4 reps listadas) devuelve `confianza: "alta"` aunque lo avise en
+`ambiguedad`; debería ser `"baja"`.
+
+### Paso 3 — alta de ejercicios desde el bot
+
+Hoy `hip thrust` no se puede cargar de ninguna forma vía Telegram. Flujo propuesto: el
+bot detecta el sin-match y **pregunta** ("¿lo agrego como HIP THRUST, grupo PIERNA?"),
+y recién con el sí explícito lo crea. Mantiene la regla de no inventar, pero destraba
+el caso.
+
+### Paso 4 — Supabase (Fase 2)
+
+El plan viejo, y ahora tiene una razón extra: con el bot en un servidor always-on los
+mensajes entrarían al instante en vez de esperar a que se prenda la PC. Hoy con polling
+llegan cuando arranca `server.py` (Telegram los guarda ~24hs, no se pierde nada).
+Por esto es la regla 4 — SQLAlchemy core, nada de Flask-SQLAlchemy.
+
+### Deuda conocida (no urgente)
+
+- **No hay `requirements.txt`.** Las dependencias están listadas en el README pero sin
+  fijar versiones.
+- **`/api/ejercicio/<nombre>` es un duplicado legacy** de `/api/gym/ejercicio/<nombre>`.
+  El frontend usa el segundo. Se puede borrar el primero.
+- **Las fechas del 21/03/2026** siguen sin verificar (ver sección de arriba).
 
 ---
 
