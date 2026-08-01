@@ -5,7 +5,7 @@ cruza cuatro fuentes de datos en una sola vista:
 
 | Dominio | De dónde sale |
 |---|---|
-| **Gimnasio** | SQLite local — se carga desde el tab ENTRENO |
+| **Gimnasio** | SQLite local — por mensaje de Telegram o desde el tab ENTRENO |
 | **Running** | Garmin Connect (automático) |
 | **Composición corporal** | PDFs de antropometría ISAK en `pdfs/` |
 | **Sueño** | Garmin Connect (automático) |
@@ -27,6 +27,7 @@ El banner de arranque te dice el estado de cada fuente:
 ```
   Garmin Connect: [OK] CONFIGURADO
   PDFs antropometria: 2 encontrados
+  Telegram: [OK] bot escuchando
 ```
 
 Si algo dice `[X]`, mirá la sección correspondiente más abajo. El dashboard **funciona
@@ -41,6 +42,7 @@ un estado vacío en vez de romperse.
 
 ```bash
 pip install flask flask-cors python-dotenv sqlalchemy garminconnect pdfplumber
+pip install anthropic requests
 pip install google-api-python-client google-auth google-auth-oauthlib google-auth-httplib2
 ```
 
@@ -74,9 +76,63 @@ Para probar el parseo de un PDF suelto:
 python antro_parser.py pdfs/informe.pdf
 ```
 
+### 5. Bot de Telegram
+
+Tres valores en el `.env` (la plantilla está en `.env.example`):
+
+| Variable | De dónde sale |
+|---|---|
+| `TELEGRAM_BOT_TOKEN` | hablale a **@BotFather** → `/newbot` |
+| `TELEGRAM_ALLOWED_USER_ID` | hablale a **@userinfobot**, te da tu ID numérico |
+| `ANTHROPIC_API_KEY` | [console.anthropic.com](https://console.anthropic.com) |
+
+El bot arranca solo junto con `server.py`. Usa long polling, así que **no hace falta URL
+pública, ni túnel, ni abrir puertos** — tu PC le pregunta a Telegram, no al revés. Si la
+PC está apagada mientras entrenás, Telegram guarda los mensajes ~24hs y entran al prender.
+
+`TELEGRAM_ALLOWED_USER_ID` no es opcional: los bots son descubribles por su username, y
+sin ese filtro cualquiera podría escribir en tu base y gastarte la API key.
+
 ---
 
-## Cargar entrenamientos — tab ENTRENO
+## Cargar entrenamientos
+
+### Por Telegram (lo más rápido)
+
+Mandale un mensaje al bot como te salga. No hay sintaxis que recordar:
+
+```
+BP 75 x 3 x 6,4,3
+sentadilla 100 3x5
+dominadas 3x8
+PB 70x8 75x6 80x4
+hoy banca 75 por 6, 4 y 3, después dominadas 3x8 y remo 60x10,10,8
+```
+
+Lo interpreta un modelo de Claude contra **tu** catálogo de ejercicios, así que entiende
+tus abreviaturas (`BP` → `PB`), español o inglés, y varios ejercicios en un mismo mensaje.
+
+El bot te contesta con **lo que entendió**, para que veas el error al toque:
+
+```
+[OK] PB - 3 series @ 75kg
+   reps: 6, 4, 3   vol: 975 kg
+```
+
+Si un ejercicio no está en tu catálogo **no lo inventa**: lo marca como sin match y te
+avisa. Eso evita que el mismo ejercicio termine con el historial partido en dos.
+
+Los mensajes caen en una **bandeja** arriba del tab ENTRENO. Todavía **no se guardan
+como series** — primero los revisás ahí. Se guarda el texto original tal cual lo
+escribiste, así siempre podés comparar contra lo que el parser entendió.
+
+Para probar el parser sin Telegram:
+
+```bash
+python message_parser.py "BP 75 x 3 x 6,4,3"
+```
+
+### Por el tab ENTRENO
 
 Diseñado para usar en el celular, en el gimnasio, con **3 taps**:
 
@@ -87,6 +143,10 @@ Diseñado para usar en el celular, en el gimnasio, con **3 taps**:
 El número de serie se calcula solo. Las series se pueden editar o borrar después.
 El catálogo de ejercicios es tuyo: agregás uno nuevo desde el mismo tab y queda guardado
 con su grupo muscular.
+
+El **día de rutina es opcional**. Si no seguís la rotación 1-2-3 a rajatabla, dejalo
+vacío: la sesión se guarda igual y simplemente no entra en el gráfico de distribución
+por día. Es preferible a etiquetarla mal.
 
 ---
 
@@ -108,9 +168,11 @@ pace promedio.
 ## Estructura
 
 ```
-server.py          Backend Flask — todos los endpoints
-models.py           SQLAlchemy: Ejercicio, Sesion, Serie
+server.py           Backend Flask — todos los endpoints
+models.py           SQLAlchemy: Ejercicio, Sesion, Serie, MensajeParseado
 dashboard_v3.html   Frontend completo (HTML + CSS + JS en un archivo)
+telegram_bot.py     Bot de Telegram (long polling)
+message_parser.py   Convierte los mensajes en series usando Claude
 garmin_client.py    Cliente de Garmin Connect
 garmin_setup.py     Auth de Garmin (correr una vez)
 antro_parser.py     Parser de PDFs ISAK
@@ -119,16 +181,24 @@ manu_logs.db        Base de datos (no se commitea)
 pdfs/               Informes antropométricos (no se commitean)
 ```
 
-Nada de esto se sube al repo: `credentials.json`, `.env`, `*.db`, `pdfs/`.
-Son datos personales o secretos.
+Nada de esto se sube al repo: `credentials.json`, `.env`, `*.db`, `pdfs/`,
+`.telegram_offset`. Son datos personales o secretos.
 
-### Configuración opcional (`.env`)
+### Configuración (`.env`)
+
+Copiá `.env.example` a `.env` y completá lo que uses:
 
 ```
 DATABASE_URL=sqlite:///manu_logs.db
+TELEGRAM_BOT_TOKEN=...
+TELEGRAM_ALLOWED_USER_ID=...
+ANTHROPIC_API_KEY=...
 SPREADSHEET_ID=...
 CREDENTIALS_FILE=credentials.json
 ```
+
+Si alguna credencial se te escapa a algún lado, rotala: `/revoke` en @BotFather para el
+token del bot, y la consola de Anthropic para la API key.
 
 ---
 

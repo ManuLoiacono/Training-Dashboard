@@ -13,6 +13,9 @@ credentials.json
 
 # Database
 *.db
+# Backups: '*.db' no los agarra, el nombre no termina en .db
+*.db.backup*
+*.db.bak
 
 # Garmin tokens
 .garth/
@@ -35,3 +38,6 @@ Thumbs.db
 
 # PDFs (contain personal data)
 pdfs/
+
+# Estado local del bot (ultimo update_id procesado)
+.telegram_offset

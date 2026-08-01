@@ -170,6 +170,65 @@
       margin-bottom: 32px;
     }
 
+    /* BANDEJA TELEGRAM */
+    .tg-inbox {
+      border: 1px solid var(--border);
+      background: var(--surface);
+      padding: 16px;
+      margin-bottom: 32px;
+    }
+
+    .tg-inbox-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+
+    .tg-status {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 1px;
+      color: var(--muted);
+    }
+
+    .tg-status.on { color: var(--accent2); }
+    .tg-status.off { color: var(--accent3); }
+
+    .tg-msg {
+      border-left: 2px solid var(--muted2);
+      padding: 10px 0 10px 12px;
+      margin-bottom: 12px;
+    }
+
+    .tg-msg.ok { border-left-color: var(--accent); }
+    .tg-msg.dudoso { border-left-color: var(--accent3); }
+
+    .tg-msg-raw {
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .tg-ej {
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      color: var(--text);
+      margin-bottom: 3px;
+    }
+
+    .tg-ej-nombre { color: var(--accent); }
+    .tg-ej-sinmatch { color: var(--accent3); }
+    .tg-ej-detalle { color: var(--muted); }
+
+    .tg-aviso {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: var(--accent3);
+      margin-top: 6px;
+    }
+
     /* STATS ROW */
     .stats-row {
       display: grid;
@@ -1705,6 +1764,15 @@
     <div class="tab-panel" id="tab-entreno">
       <div class="section-title">ENTRENO</div>
 
+      <!-- Bandeja de entrada del bot de Telegram (solo lectura por ahora) -->
+      <div class="tg-inbox">
+        <div class="tg-inbox-head">
+          <span class="section-subtitle" style="margin:0;">BANDEJA — TELEGRAM</span>
+          <span class="tg-status" id="tg-status">···</span>
+        </div>
+        <div id="tg-inbox-list"></div>
+      </div>
+
       <!-- Step 1: Start session -->
       <div id="entreno-step1" class="entreno-start">
         <div class="section-subtitle" style="margin-bottom:20px;">NUEVA SESIÓN</div>
@@ -1872,7 +1940,7 @@
         const fecha = row.fecha;
         const ejercicio = row.ejercicio?.toUpperCase();
         const grupo = row.grupo_muscular || 'OTRO';
-        const dia = parseInt(row.dia) || 1;
+        const dia = parseInt(row.dia) || null;
         const serie = parseInt(row.serie) || 1;
         const reps = parseInt(row.reps) || 0;
         const peso = parseFloat(row.peso_kg) || 0;
@@ -2004,7 +2072,89 @@
     }
 
     // ===== TAB SWITCHING =====
+    // ---- BANDEJA TELEGRAM ----
+    function tgEscape(s) {
+      const d = document.createElement('div');
+      d.textContent = s == null ? '' : String(s);
+      return d.innerHTML;
+    }
+
+    function tgRenderMensaje(m) {
+      if (m.estado === 'error') {
+        return `<div class="tg-msg dudoso">
+          <div class="tg-msg-raw">"${tgEscape(m.texto_original)}"</div>
+          <div class="tg-aviso">No se pudo parsear: ${tgEscape(m.error)}</div>
+        </div>`;
+      }
+
+      const p = m.parse;
+      if (!p || !p.ejercicios || p.ejercicios.length === 0) {
+        return `<div class="tg-msg dudoso">
+          <div class="tg-msg-raw">"${tgEscape(m.texto_original)}"</div>
+          <div class="tg-aviso">Sin ejercicios reconocidos.</div>
+        </div>`;
+      }
+
+      const dudoso = p.confianza === 'baja' || p.ejercicios.some(e => !e.ejercicio_id);
+
+      const ejs = p.ejercicios.map(e => {
+        const pesos = [...new Set(e.series.map(s => s.peso_kg))];
+        const detalle = pesos.length === 1
+          ? `${e.series.length} series @ ${pesos[0]}kg — ${e.series.map(s => s.reps).join(', ')} reps`
+          : `${e.series.length} series — ${e.series.map(s => `${s.reps}x${s.peso_kg}kg`).join(', ')}`;
+        const vol = e.series.reduce((a, s) => a + s.reps * s.peso_kg, 0);
+        const nombre = e.ejercicio_id
+          ? `<span class="tg-ej-nombre">${tgEscape(e.nombre_catalogo)}</span>`
+          : `<span class="tg-ej-sinmatch">?? ${tgEscape(e.alias_detectado)}</span>`;
+        return `<div class="tg-ej">${nombre}
+          <span class="tg-ej-detalle">${tgEscape(detalle)} · ${vol.toLocaleString()} kg</span></div>`;
+      }).join('');
+
+      const aviso = p.ambiguedad
+        ? `<div class="tg-aviso">${tgEscape(p.ambiguedad)}</div>` : '';
+
+      return `<div class="tg-msg ${dudoso ? 'dudoso' : 'ok'}">
+        <div class="tg-msg-raw">"${tgEscape(m.texto_original)}"</div>
+        ${ejs}${aviso}
+      </div>`;
+    }
+
+    async function loadTelegramInbox() {
+      const cont = document.getElementById('tg-inbox-list');
+      const estado = document.getElementById('tg-status');
+      if (!cont) return;
+      try {
+        const res = await fetch('/api/mensajes?limite=10', { signal: AbortSignal.timeout(10000) });
+        const json = await res.json();
+        const msgs = json.data || [];
+
+        if (json.bot_activo) {
+          estado.textContent = 'BOT ACTIVO';
+          estado.className = 'tg-status on';
+        } else {
+          estado.textContent = 'BOT NO CONFIGURADO';
+          estado.className = 'tg-status off';
+        }
+
+        cont.innerHTML = msgs.length
+          ? msgs.map(tgRenderMensaje).join('')
+          : `<div class="tg-msg"><div class="tg-msg-raw">
+               Todavía no llegó ningún mensaje. Mandale uno al bot.
+             </div></div>`;
+      } catch (e) {
+        estado.textContent = 'SIN CONEXIÓN';
+        estado.className = 'tg-status off';
+      }
+    }
+
+    // Refresco automático solo mientras el tab ENTRENO está visible
+    setInterval(() => {
+      const panel = document.getElementById('tab-entreno');
+      if (panel && panel.classList.contains('active')) loadTelegramInbox();
+    }, 15000);
+
     function switchTab(name) {
+      if (name === 'entreno') loadTelegramInbox();
       document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
       document.getElementById('tab-' + name).classList.add('active');
@@ -2288,7 +2438,7 @@
         const totalReps = reps.reduce((a, b) => a + b, 0);
         const sets = reps.filter(r => r > 0).length;
         return { name, day: d.day, group: d.group, weight: w, sets, totalReps, vol };
-      }).filter(r => r.vol > 0).sort((a, b) => a.day - b.day);
+      }).filter(r => r.vol > 0).sort((a, b) => (a.day ?? 99) - (b.day ?? 99));
 
       const groupColors = {
         'PECHO': ACCENT, 'ESPALDA': ACCENT2, 'PIERNA': ORANGE,
@@ -2313,7 +2463,7 @@
         ${rows.map(r => `
           <tr>
             <td>${r.name}</td>
-            <td style="color: var(--muted)">${r.day}</td>
+            <td style="color: var(--muted)">${r.day ?? '—'}</td>
             <td>
               <span style="color: ${groupColors[r.group] || '#888'}; font-size: 10px; letter-spacing: 1px;">
                 ${r.group}
@@ -3685,6 +3835,7 @@
 
     // switchTab without event.target (for programmatic use)
     function switchTabDirect(name) {
+      if (name === 'entreno') loadTelegramInbox();
       document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
       document.querySelectorAll('.tab-btn').forEach(b => {
         b.classList.remove('active');

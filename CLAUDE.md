@@ -34,6 +34,8 @@ garmin_client.py    Wrapper de Garmin Connect (running + sueño) vía garth.
 garmin_setup.py     Auth de Garmin, se corre una sola vez. Tokens en ~/.garth/
 antro_parser.py     Parser de PDFs ISAK (composición corporal) con pdfplumber.
 migrate_sheets.py   Script one-shot: migró gimnasio de Google Sheets → SQLite. Ya usado.
+telegram_bot.py     Bot de Telegram: long polling, whitelist, deja mensajes en la bandeja.
+message_parser.py   Convierte texto libre en series estructuradas usando Claude.
 manu_logs.db        SQLite (gitignored).
 pdfs/               Informes antropométricos (gitignored, datos personales).
 credentials.json    Service account de Google Sheets (gitignored).
@@ -53,17 +55,26 @@ Cada fuente tiene una cadena de fallback. **Nunca crashear**: si todo falla, dev
 Google Sheets quedó como **fallback legacy** para running y antropometría. El gimnasio
 ya vive en SQLite; el fallback a Sheets solo dispara si la DB está vacía.
 
-`garmin_client` y `antro_parser` se importan en try/except — el server arranca igual
-si faltan (`GARMIN_AVAILABLE` / `ANTRO_PARSER_AVAILABLE`).
+`garmin_client`, `antro_parser` y `telegram_bot` se importan en try/except — el server
+arranca igual si faltan (`GARMIN_AVAILABLE` / `ANTRO_PARSER_AVAILABLE` / `TELEGRAM_AVAILABLE`).
 
 ### Modelo de datos
 
 ```
 Ejercicio  id, nombre (unique, UPPERCASE), grupo_muscular (UPPERCASE), notas
-Sesion     id, fecha (Date), dia_rutina (Int), notas
+Sesion     id, fecha (Date), dia_rutina (Int, OPCIONAL), notas
 Serie      id, sesion_id → Sesion, ejercicio_id → Ejercicio,
            numero_serie (auto-calculado), reps, peso_kg, notas
+
+MensajeParseado  id, telegram_message_id, texto_original, parse_json,
+                 estado (parseado|error|confirmado|descartado), error, recibido_en
 ```
+
+**`dia_rutina` es opcional a propósito.** Manuel no siempre respeta la rotación 1-2-3, y
+un día mal etiquetado es peor que ninguno. Sin valor, la sesión no entra en el gráfico de
+distribución por día y en la tabla aparece un `—`. **No poner un default de 1** — el
+frontend hacía `parseInt(row.dia) || 1` y eso metía sesiones sin etiquetar en el balde del
+DÍA 1; ya está corregido a `|| null`.
 
 `Sesion.series` tiene `cascade="all, delete-orphan"`. Foreign keys activadas por
 PRAGMA en SQLite. Nombres de ejercicio y grupo se normalizan a MAYÚSCULAS al crear.
@@ -88,6 +99,9 @@ el frontend y los endpoints de análisis no tengan que cambiar.
 - `POST /api/gym/series` · `PUT/DELETE /api/gym/series/<id>`
 - `GET /api/gym/ejercicio/<nombre>` — historial, PRs, 1RM, tendencia (desde SQLite)
 
+**Bandeja de Telegram**
+- `GET /api/mensajes` — últimos mensajes parseados (`?limite=N`, default 20) + `bot_activo`
+
 **Análisis**
 - `GET /api/score` — score semanal 1-100, ponderado
 - `GET /api/ejercicio/<nombre>` — versión legacy vía `read_gym_as_rows()`; `/api/gym/ejercicio/<nombre>` es la que usa el frontend
@@ -104,6 +118,66 @@ Los pesos se **redistribuyen** si falta una fuente (se divide por `total_weight`
 Gym = volumen de la semana vs promedio de las 4 anteriores. Running = pace promedio
 histórico / pace reciente. Composición = `(masa_muscular/masa_adiposa - 1.0) * 50`.
 1RM estimado con fórmula de Epley: `peso_max * (1 + reps/30)`.
+
+---
+
+## Carga por Telegram
+
+Manuel manda un mensaje informal al bot y el sistema lo convierte en series.
+Nació porque el tab ENTRENO resultó demasiado engorroso: estuvo **4 meses sin cargar
+nada** (última sesión 21/03/2026) y quedaron sesiones abiertas y abandonadas.
+
+**Telegram y no WhatsApp** por una razón técnica concreta: el bot usa **long polling**,
+así que el server local no necesita URL pública ni túnel. WhatsApp Cloud API exige un
+webhook HTTPS público. Además Telegram encola los updates ~24hs — si la PC está apagada
+durante el entrenamiento, los mensajes entran al prender.
+
+### Flujo
+
+```
+mensaje → whitelist por user ID → Claude (structured output) → tabla mensajes_parseados
+        → eco de confirmación al chat        → panel en el tab ENTRENO
+```
+
+**No escribe en `sesiones`/`series` todavía.** Es una bandeja de entrada: primero se
+valida que el parser acierte con mensajes reales, después se agrega el botón de confirmar.
+
+### El parser (`message_parser.py`)
+
+Modelo **`claude-haiku-4-5`**. Es extracción contra un catálogo fijo, no razonamiento.
+
+- Usa `client.messages.parse()` con un esquema **Pydantic** (`MensajeParse`) — structured
+  outputs garantiza JSON válido, así que no hay regex sobre la salida ni reintentos.
+- **Sin `effort` y sin `thinking`**: Haiku 4.5 rechaza `effort`, y para esta tarea no aporta.
+- El catálogo de ejercicios se inyecta en el system prompt en cada llamada, con los IDs.
+  El modelo devuelve `ejercicio_id`, nunca un nombre libre.
+- **Nunca crear un ejercicio automáticamente.** Si no matchea: `ejercicio_id: null`,
+  `confianza: "baja"` y lo explica en `ambiguedad`. Esta regla existe porque la entrada
+  libre ya había partido un ejercicio en dos (`PB INCL MANC` / `PB INCLINADO MANC.`).
+- Costo: ~1000 tokens de entrada + ~150 de salida por mensaje, centavos al mes. El prompt
+  caching **no sirve acá** — Haiku necesita 4096 tokens de prefijo y el prompt ronda los 1000.
+
+Probarlo suelto: `python message_parser.py "BP 75 x 3 x 6,4,3"`
+
+### El bot (`telegram_bot.py`)
+
+- Long polling con `requests` contra la Bot API. Sin librería de Telegram: es HTTP plano.
+- **Whitelist obligatoria** por `TELEGRAM_ALLOWED_USER_ID`. Los bots son descubribles por
+  username; sin el filtro cualquiera escribe en la base y gasta la API key.
+- El último `update_id` se guarda en `.telegram_offset` (gitignored) para no reprocesar.
+- Corre en un thread lanzado desde `server.py`.
+
+> ⚠️ **Footgun del reloader.** Con `debug=True`, Flask ejecuta el script en **dos
+> procesos**. Sin guarda se levantan dos pollers y Telegram devuelve **409 Conflict**.
+> La guarda es `os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not DEBUG`. Ojo: **no
+> sirve `app.debug`**, que todavía es `False` cuando se evalúa el bloque `__main__`.
+> Verificar siempre que aparezca **una sola** línea `[TG] Conectado como`.
+
+### Seguridad
+
+Las credenciales viven en `.env` (gitignored) y se leen de `os.environ` — nunca van
+hardcodeadas ni pasan por el chat. Rotación: `/revoke` en @BotFather para el token del bot,
+consola de Anthropic para la API key.
 
 ---
 
@@ -192,19 +266,41 @@ y contienen datos personales o secretos. Verificar con `git status` antes de `gi
 
 ## Estado actual
 
-Todo lo del roadmap (F-01 a F-04) está implementado y la migración a SQLite está hecha:
+Roadmap F-01 a F-04 implementado, migración a SQLite hecha, y carga por Telegram andando
+punta a punta (verificada con mensajes reales el 01/08/2026).
 
 - F-01 score semanal · F-02 progresión por ejercicio · F-03 correlaciones cruzadas · F-04 sueño
-- Gimnasio migrado de Google Sheets a SQLite, con CRUD completo y tab ENTRENO
+- Gimnasio en SQLite con CRUD completo y tab ENTRENO
+- Bot de Telegram + parser con Claude → bandeja de entrada (todavía sin confirmar)
 
-DB al día de hoy: 23 ejercicios, 10 sesiones, 269 series. Garmin conectado, 2 PDFs parseados.
+DB: 22 ejercicios, 9 sesiones, 137 series. Garmin conectado, 2 PDFs parseados.
 
-**Próximo paso planeado:** migración a Supabase (Fase 2) para acceso desde la nube.
-Por eso el punto 4 de las reglas.
+### Limpieza de datos del 31/07/2026
 
-`README.md` documenta el setup **original** con Google Sheets y todavía dice `server.py`.
-Está desactualizado respecto a SQLite — sirve solo como referencia histórica del setup
-de Google Cloud / service account.
+Tres arreglos, con backup en `manu_logs.db.backup-20260731-234805`:
+
+1. **132 series duplicadas eliminadas** (269 → 137). La migración desde Sheets había
+   insertado cada fila dos veces, en las 7 sesiones migradas. **El volumen estaba al
+   doble**: 76.063 kg reportados vs 38.474 kg reales. Los PRs de peso y de volumen no
+   estaban afectados (son máximos por serie, no sumas), y el score semanal tampoco
+   (compara ratios, y ambos lados estaban duplicados).
+2. **`PB INCLINADO MANC.` fusionado en `PB INCL MANC`** — mismo ejercicio con el historial
+   partido. Se conservó el nombre corto por consistencia con `PM MANC`, `SQ`, `RDL`.
+3. **`dia_rutina` pasó a opcional** — requirió recrear la tabla `sesiones`, porque SQLite
+   tenía el `NOT NULL` grabado y cambiar el modelo no alcanza.
+
+Si aparecen números de volumen que no cierran con datos viejos, es por (1).
+
+**Próximos pasos:**
+1. Botón de confirmar en la bandeja: pasar de `mensajes_parseados` a `sesiones`/`series`
+2. Migración a Supabase (Fase 2) — por eso la regla 4
+
+### Sobre el 21/03/2026
+
+Las 7 sesiones migradas tienen fechas concentradas y algunas con muchas series
+(la 5 tiene 33). Puede ser un artefacto de la migración desde Sheets, sin confirmar.
+**No tocar sin preguntar** — las sesiones 9 y 10 de esa fecha son carga manual real
+desde ENTRENO, con pesos que no aparecen en ninguna otra.
 
 ---
 
@@ -212,8 +308,14 @@ de Google Cloud / service account.
 
 - El backend se llamó `server1.py` por un tiempo y volvió a `server.py` (commit `ff2b2b7`).
   Si ves `server1.py` en algún lado, es una referencia vieja.
-- Config por variables de entorno vía `.env`: `SPREADSHEET_ID`, `CREDENTIALS_FILE`, `DATABASE_URL`.
-- Gitignored y **nunca commitear**: `credentials.json`, `.env`, `*.db`, `pdfs/`.
+- Config por `.env` (plantilla completa en `.env.example`): `SPREADSHEET_ID`,
+  `CREDENTIALS_FILE`, `DATABASE_URL`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_ALLOWED_USER_ID`,
+  `ANTHROPIC_API_KEY`.
+- Gitignored y **nunca commitear**: `credentials.json`, `.env`, `*.db`, `pdfs/`,
+  `.telegram_offset`.
+- Para chequear que las credenciales estén cargadas **sin exponerlas**, verificar
+  presencia y forma (`bool(os.environ.get(...))`, longitud, regex) — nunca imprimir
+  el valor ni pedírselo al usuario por chat.
 - Tokens de Garmin en `~/.garth/`. Si expiran: `python garmin_setup.py`.
 - Los PDFs antropométricos siguen protocolo ISAK; el parser extrae ~25 variables y
   ordena los resultados por fecha.

@@ -17,7 +17,9 @@ from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 
 import models
-from models import get_session, Ejercicio, Sesion, Serie, read_gym_as_rows
+from models import (
+    get_session, Ejercicio, Sesion, Serie, MensajeParseado, read_gym_as_rows,
+)
 
 # ─────────────────────────────────────────────
 # Módulos opcionales: Garmin Connect y PDF parser
@@ -28,6 +30,12 @@ try:
     GARMIN_AVAILABLE = True
 except ImportError:
     GARMIN_AVAILABLE = False
+
+try:
+    import telegram_bot
+    TELEGRAM_AVAILABLE = True
+except ImportError:
+    TELEGRAM_AVAILABLE = False
 
 try:
     import antro_parser
@@ -220,17 +228,23 @@ def api_gym_sesiones_create():
     dia = data.get("dia_rutina")
     notas = data.get("notas", "")
 
-    if not dia:
-        return jsonify({"ok": False, "error": "dia_rutina es requerido"}), 400
-
     try:
         fecha = date_type.fromisoformat(fecha_str)
     except ValueError:
         return jsonify({"ok": False, "error": "fecha inválida (YYYY-MM-DD)"}), 400
 
+    # dia_rutina es opcional: sin valor la sesión queda sin etiquetar
+    if dia is not None and str(dia).strip() != "":
+        try:
+            dia = int(dia)
+        except (TypeError, ValueError):
+            return jsonify({"ok": False, "error": "dia_rutina debe ser un número"}), 400
+    else:
+        dia = None
+
     session = get_session()
     try:
-        s = Sesion(fecha=fecha, dia_rutina=int(dia), notas=notas)
+        s = Sesion(fecha=fecha, dia_rutina=dia, notas=notas)
         session.add(s)
         session.commit()
         return jsonify({"ok": True, "data": s.to_dict()}), 201
@@ -416,6 +430,34 @@ def api_gym_ejercicio_history(nombre):
         })
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
+    finally:
+        session.close()
+
+
+# ─────────────────────────────────────────────
+# BANDEJA DE ENTRADA (mensajes de Telegram)
+# ─────────────────────────────────────────────
+
+@app.route("/api/mensajes")
+def api_mensajes():
+    """Últimos mensajes recibidos por el bot, ya parseados pero sin confirmar."""
+    limite = request.args.get("limite", 20, type=int)
+    session = get_session()
+    try:
+        mensajes = (
+            session.query(MensajeParseado)
+            .order_by(MensajeParseado.recibido_en.desc())
+            .limit(limite)
+            .all()
+        )
+        return jsonify({
+            "ok": True,
+            "data": [m.to_dict() for m in mensajes],
+            "bot_activo": TELEGRAM_AVAILABLE and telegram_bot.esta_configurado(),
+        })
+    except Exception as e:
+        # Sin bandeja el dashboard tiene que seguir andando
+        return jsonify({"ok": True, "data": [], "error": str(e)})
     finally:
         session.close()
 
@@ -867,6 +909,8 @@ def api_all():
 
 # ─────────────────────────────────────────────
 
+DEBUG = True
+
 if __name__ == "__main__":
     print("\n" + "="*50)
     print("  MANU///LOGS - servidor local")
@@ -889,7 +933,26 @@ if __name__ == "__main__":
     else:
         print("  PDFs antropometria: [X] pip install pdfplumber")
 
+    # Bot de Telegram — en su propio thread.
+    # Con debug=True el reloader corre este script en DOS procesos (padre
+    # observador + hijo que sirve). Solo el hijo tiene WERKZEUG_RUN_MAIN=true.
+    # Sin esta guarda hay dos pollers y Telegram devuelve 409 Conflict.
+    es_hijo_del_reloader = os.environ.get("WERKZEUG_RUN_MAIN") == "true"
+    arrancar_bot = es_hijo_del_reloader or not DEBUG
+
+    if TELEGRAM_AVAILABLE and telegram_bot.esta_configurado():
+        if arrancar_bot:
+            import threading
+            threading.Thread(target=telegram_bot.correr, daemon=True).start()
+            print("  Telegram: [OK] bot escuchando")
+        else:
+            print("  Telegram: [OK] configurado (arranca en el proceso hijo)")
+    elif TELEGRAM_AVAILABLE:
+        print("  Telegram: [X] falta TELEGRAM_BOT_TOKEN / USER_ID en .env")
+    else:
+        print("  Telegram: [X] pip install requests anthropic")
+
     print("\n  Abri el dashboard en:")
     print(f"  -> http://localhost:5000")
     print("="*50 + "\n")
-    app.run(debug=True, port=5000)
+    app.run(debug=DEBUG, port=5000)

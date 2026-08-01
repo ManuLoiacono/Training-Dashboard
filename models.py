@@ -67,7 +67,10 @@ class Sesion(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     fecha = Column(Date, nullable=False)
-    dia_rutina = Column(Integer, nullable=False)
+    # Opcional: la rotacion 1-2-3 no siempre se respeta, y un dia mal
+    # etiquetado es peor que ninguno. Sin valor, la sesion no entra en
+    # el grafico de distribucion por dia.
+    dia_rutina = Column(Integer, nullable=True)
     notas = Column(Text)
     creado_en = Column(DateTime, default=datetime.utcnow)
 
@@ -116,6 +119,39 @@ class Serie(Base):
         }
 
 
+class MensajeParseado(Base):
+    """
+    Bandeja de entrada del bot de Telegram.
+    Guarda el texto original tal cual llegó y lo que el modelo entendió.
+    Todavía NO escribe en sesiones/series: eso pasa cuando confirmás.
+    """
+    __tablename__ = "mensajes_parseados"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    telegram_message_id = Column(Integer)
+    texto_original = Column(Text, nullable=False)
+    parse_json = Column(Text)
+    # parseado | error | confirmado | descartado
+    estado = Column(Text, nullable=False, default="parseado")
+    error = Column(Text)
+    recibido_en = Column(DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        import json
+        try:
+            parse = json.loads(self.parse_json) if self.parse_json else None
+        except json.JSONDecodeError:
+            parse = None
+        return {
+            "id": self.id,
+            "texto_original": self.texto_original,
+            "parse": parse,
+            "estado": self.estado,
+            "error": self.error or "",
+            "recibido_en": self.recibido_en.isoformat() if self.recibido_en else "",
+        }
+
+
 # ─────────────────────────────────────────────
 # Init DB
 # ─────────────────────────────────────────────
@@ -153,7 +189,7 @@ def read_gym_as_rows() -> list[dict]:
         for s in series:
             rows.append({
                 "fecha": s.sesion.fecha.isoformat(),
-                "dia": str(s.sesion.dia_rutina),
+                "dia": str(s.sesion.dia_rutina) if s.sesion.dia_rutina is not None else "",
                 "ejercicio": s.ejercicio.nombre,
                 "grupo_muscular": s.ejercicio.grupo_muscular,
                 "serie": str(s.numero_serie),
