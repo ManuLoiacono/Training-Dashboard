@@ -62,13 +62,32 @@ arranca igual si faltan (`GARMIN_AVAILABLE` / `ANTRO_PARSER_AVAILABLE` / `TELEGR
 
 ```
 Ejercicio  id, nombre (unique, UPPERCASE), grupo_muscular (UPPERCASE), notas
-Sesion     id, fecha (Date), dia_rutina (Int, OPCIONAL), notas
+Sesion     id, fecha (Date), dia_rutina (Int, OPCIONAL), nombre (Text, OPCIONAL),
+           notas, estado (abierta|cerrada), iniciada_en, cerrada_en,
+           pregunta_cierre_en, garmin_activity_id
 Serie      id, sesion_id → Sesion, ejercicio_id → Ejercicio,
            numero_serie (auto-calculado), reps, peso_kg, notas
 
 MensajeParseado  id, telegram_message_id, texto_original, parse_json,
-                 estado (parseado|error|confirmado|descartado), error, recibido_en
+                 estado (parseado|error|confirmado|parcial|descartado|aplicado),
+                 error, tipo (series|inicio|fin|respuesta|otro),
+                 sesion_id → Sesion, recibido_en
 ```
+
+**`nombre` es cómo Manuel piensa el entrenamiento hoy**: PUSH, PULL, PIERNA.
+Reemplaza en la práctica a `dia_rutina`, que es la rotación 1-2-3 y quedó para
+las sesiones viejas que ya lo tenían. El gráfico de distribución por día sigue
+usando `dia_rutina` — no se tocó.
+
+**Los timestamps van en hora LOCAL, no UTC** (`models.ahora()`, no `utcnow`).
+Se comparan contra `startTimeLocal` de Garmin, y con UTC un entrenamiento de las
+21:00 se guardaba como las 00:00 del día siguiente y el match fallaba. Las filas
+escritas antes de este cambio quedaron en UTC: son 3 horas más que la realidad.
+
+**Migraciones**: `create_all()` no toca tablas que ya existen. Las columnas
+nuevas se agregan en `_migrar_columnas()` (`models.py`), que corre en cada
+import y es idempotente. Todas tienen que ser nullable o traer `DEFAULT` —
+es la única forma de que SQLite acepte un `ADD COLUMN` sin recrear la tabla.
 
 **`dia_rutina` es opcional a propósito.** Manuel no siempre respeta la rotación 1-2-3, y
 un día mal etiquetado es peor que ninguno. Sin valor, la sesión no entra en el gráfico de
@@ -100,7 +119,10 @@ el frontend y los endpoints de análisis no tengan que cambiar.
 - `GET /api/gym/ejercicio/<nombre>` — historial, PRs, 1RM, tendencia (desde SQLite)
 
 **Bandeja de Telegram**
-- `GET /api/mensajes` — últimos mensajes parseados (`?limite=N`, default 20) + `bot_activo`
+- `GET /api/mensajes` — últimos mensajes parseados (`?limite=N`, default 20) +
+  `bot_activo` + `sesion_abierta`
+- `POST /api/mensajes/<id>/confirmar` — escribe las series en sesiones/series
+- `POST /api/mensajes/<id>/descartar` — no escribe nada
 
 **Análisis**
 - `GET /api/score` — score semanal 1-100, ponderado
@@ -132,20 +154,68 @@ así que el server local no necesita URL pública ni túnel. WhatsApp Cloud API 
 webhook HTTPS público. Además Telegram encola los updates ~24hs — si la PC está apagada
 durante el entrenamiento, los mensajes entran al prender.
 
+### El protocolo de sesión
+
+La sesión se abre y se cierra **explícitamente**. Es una decisión de Manuel, y es
+mejor que lo que había planeado antes (deducir la fecha de Garmin y agrupar por día):
+declarando el inicio, **no hay nada que adivinar**.
+
+```
+"inicio: Push 02/08/26"   abre la sesión (nombre PUSH, fecha 2026-08-02)
+"BP 75 x 3 x 6,4,3"       cae en la bandeja, atado a esa sesión
+"fin sesión"              la cierra y la linkea con la actividad de Garmin
+```
+
+Reglas del ciclo de vida (todo en `models.py`):
+
+- **Una sola sesión abierta a la vez.** Un `inicio` nuevo cierra la anterior.
+- **Fechas argentinas**: `02/08/26` es el 2 de agosto. También entiende "hoy" y "ayer".
+- **Si te olvidás de cerrarla**, a las `HORAS_PARA_PREGUNTAR_CIERRE` (5) el watchdog
+  del bot pregunta si la damos por terminada. **Pregunta una sola vez** — se anota en
+  `pregunta_cierre_en`. Insistir es la forma más rápida de que el bot moleste y se
+  deje de usar, que es exactamente lo que pasó con el tab ENTRENO.
+- **Sin sesión abierta el mensaje no se pierde**: se guarda igual, y al confirmarlo
+  cae en la sesión del día (se reusa la que exista, o se crea una).
+
 ### Flujo
 
 ```
-mensaje → whitelist por user ID → Claude (structured output) → tabla mensajes_parseados
-        → eco de confirmación al chat        → panel en el tab ENTRENO
+mensaje → whitelist por user ID → Claude (structured output) → clasifica la intención
+        → inicio/fin mueven la sesión · las series van a mensajes_parseados
+        → eco de confirmación al chat  → panel en el tab ENTRENO → CONFIRMAR
 ```
 
-**No escribe en `sesiones`/`series` todavía.** Es una bandeja de entrada: primero se
-valida que el parser acierte con mensajes reales, después se agrega el botón de confirmar.
+**Las series no se escriben solas.** El mensaje queda en la bandeja y recién entra a
+`sesiones`/`series` cuando apretás CONFIRMAR en el tab ENTRENO. Es a propósito: el eco
+del bot te muestra el error al toque, pero nada toca la base sin que lo mires.
+
+Al confirmar, los ejercicios **sin match se saltean** y el mensaje queda en `parcial`
+en vez de `confirmado`. Si no matcheó ninguno, no se escribe nada y falla. **Nunca se
+crea un ejercicio automáticamente** (ver Paso 3).
+
+### El link con Garmin
+
+Manuel registra "Fuerza" en el reloj: 74 actividades en 180 días. El reloj sabe
+**cuándo** entrenó y **cuánto costó** (duración, FC, calorías); lo que no sabe es
+**qué** hizo — `totalReps` viene en 0. Los mensajes de Telegram son lo complementario.
+
+Al cerrar la sesión, `buscar_actividad_fuerza()` busca la actividad que se **solapa**
+con la ventana inicio→fin (tolerancia 120 min a cada lado) y guarda su ID en
+`garmin_activity_id`. Entrenar sin el reloj es un caso válido: sin match no pasa nada.
+
+> ⚠️ La API de Garmin devuelve **400** con `activitytype="strength_training"` en la
+> búsqueda, aunque sí devuelve ese `typeKey` en los resultados (con `"running"` anda).
+> Por eso `fetch_strength_activities()` trae todo y filtra por `typeKey` en Python.
 
 ### El parser (`message_parser.py`)
 
 Modelo **`claude-haiku-4-5`**. Es extracción contra un catálogo fijo, no razonamiento.
 
+- **Clasifica la intención** en `tipo`: `series` · `inicio` · `fin` · `respuesta` · `otro`.
+  Un mensaje puede abrir la sesión **y** traer series ("arranco push: BP 75x3x6,4,3").
+- **Recibe el estado del bot** (`sesion_abierta`, `pregunta_pendiente`) en el system
+  prompt. Sin eso no puede distinguir un "sí" que contesta una pregunta del bot de un
+  "sí" suelto — el primero es `respuesta`, el segundo es `otro`.
 - Usa `client.messages.parse()` con un esquema **Pydantic** (`MensajeParse`) — structured
   outputs garantiza JSON válido, así que no hay regex sobre la salida ni reintentos.
 - **Sin `effort` y sin `thinking`**: Haiku 4.5 rechaza `effort`, y para esta tarea no aporta.
@@ -162,6 +232,11 @@ Probarlo suelto: `python message_parser.py "BP 75 x 3 x 6,4,3"`
 ### El bot (`telegram_bot.py`)
 
 - Long polling con `requests` contra la Bot API. Sin librería de Telegram: es HTTP plano.
+- **Enruta por intención**: `inicio`/`fin` mueven la sesión, las series van a la bandeja.
+- **Watchdog de sesiones abandonadas**: cada `INTERVALO_WATCHDOG_SEG` (300s), dentro del
+  mismo loop de polling — sin thread aparte. Usa `ALLOWED_USER_ID` como `chat_id`, que
+  en un chat privado con el bot son el mismo número.
+- Comandos: `/help` · `/estado` (qué sesión hay abierta) · `/fin` (cerrarla a mano).
 - **Whitelist obligatoria** por `TELEGRAM_ALLOWED_USER_ID`. Los bots son descubribles por
   username; sin el filtro cualquiera escribe en la base y gasta la API key.
 - El último `update_id` se guarda en `.telegram_offset` (gitignored) para no reprocesar.
@@ -267,13 +342,24 @@ y contienen datos personales o secretos. Verificar con `git status` antes de `gi
 ## Estado actual
 
 Roadmap F-01 a F-04 implementado, migración a SQLite hecha, y carga por Telegram andando
-punta a punta (verificada con mensajes reales el 01/08/2026).
+punta a punta con sesiones explícitas y confirmación (02/08/2026).
 
 - F-01 score semanal · F-02 progresión por ejercicio · F-03 correlaciones cruzadas · F-04 sueño
 - Gimnasio en SQLite con CRUD completo y tab ENTRENO
-- Bot de Telegram + parser con Claude → bandeja de entrada (todavía sin confirmar)
+- Bot de Telegram + parser con Claude → bandeja de entrada
+- Sesiones por Telegram (`inicio` / `fin`), botones de confirmar y link con Garmin
 
-DB: 22 ejercicios, 9 sesiones, 137 series. Garmin conectado, 2 PDFs parseados.
+DB: 22 ejercicios, 9 sesiones, 137 series. Garmin conectado, 17 PDFs parseados.
+
+### Sobre el entorno de trabajo
+
+Este clon **no trae los datos personales** — están todos gitignored. Si arrancás una
+sesión y ves la DB vacía, el bot apagado y 0 PDFs, no está roto: faltan `manu_logs.db`,
+`.env`, `credentials.json` y `pdfs/`, que Manuel tiene que copiar a mano. Garmin sí
+anda igual, porque los tokens viven en `~/.garth/`, fuera del repo.
+
+Dependencias que faltaban en la máquina y hay que instalar aparte del README:
+`python-dotenv`, `sqlalchemy` y `anthropic` (ver la deuda de `requirements.txt`).
 
 ### Limpieza de datos del 31/07/2026
 
@@ -302,57 +388,64 @@ desde ENTRENO, con pesos que no aparecen en ninguna otra.
 
 ## Plan — próximos pasos
 
-Estado al 01/08/2026. Los pasos están en orden: **1 es el siguiente**, y 2 depende de
-haber usado el bot un tiempo. Cada uno lista las decisiones que **hay que preguntarle a
-Manuel** antes de codear — no asumirlas.
+Estado al 02/08/2026. Los pasos 0, 1 y 2 están **hechos**. El siguiente es el 3, y
+depende de haber usado el protocolo de sesión un tiempo. Cada uno lista las decisiones
+que **hay que preguntarle a Manuel** antes de codear — no asumirlas.
 
-### Paso 0 — antes de empezar cualquier cosa
+### Paso 0 — auditar el bot ✅ HECHO
 
-Preguntarle **cómo se portó el bot**. Todo el paso 1 depende de que el parser sea
-confiable, y la única forma de saberlo son sus mensajes reales. Para ver qué entró:
+Se revisaron los tres mensajes reales de la bandeja (`BP 75 x 3 x 6,4,3`,
+`SQ 100 X 3 X 7,6,3`, `Remo barra 95 x 3 x 8,7,9`): los tres parsearon bien, con los
+alias resueltos (`BP` → `PB`, `Remo barra` → `REMO`) y `confianza: alta`.
+
+Para auditar de nuevo, los mensajes guardan `texto_original` junto al parse:
 
 ```bash
 curl -s "http://localhost:5000/api/mensajes?limite=50"
 ```
 
-Los mensajes guardan `texto_original` junto al parse, así que se puede auditar dónde
-falló sin depender de que él se acuerde.
+### Paso 1 — sesiones y confirmación ✅ HECHO
 
-### Paso 1 — botón de confirmar (el siguiente)
+Lo planeado era un botón de confirmar con la fecha deducida. **Manuel propuso algo
+mejor**: declarar la sesión con `inicio` / `fin sesión`, que elimina las dos preguntas
+abiertas del plan viejo — la fecha la dice él y la agrupación es explícita.
 
-Pasar de `mensajes_parseados` a `sesiones` + `series` de verdad. Es lo que convierte la
-bandeja en carga real.
+Las tres decisiones que estaban pendientes quedaron así:
 
-**Alcance:**
-- `POST /api/mensajes/<id>/confirmar` → crea las series, marca `estado="confirmado"`
-- `POST /api/mensajes/<id>/descartar` → `estado="descartado"`, no escribe nada
-- Botones en el panel del tab ENTRENO (ya existe, hoy es de solo lectura)
-- `numero_serie` se calcula solo, igual que en `POST /api/gym/series`
+1. **Agrupación** → una sesión por protocolo `inicio`/`fin`. Sin sesión abierta, cae en
+   la sesión del día (se reusa la que exista).
+2. **Fecha** → la del mensaje de inicio. Sin `inicio`, la fecha de recepción.
+3. **Sin match** → se confirman los que matchearon y el mensaje queda `parcial`.
 
-**Decisiones pendientes — preguntar antes de codear:**
+Se agregó además el link con Garmin y el watchdog de sesiones abandonadas.
 
-1. **¿Varios mensajes del mismo día son una sesión o varias?** Si manda banca, después
-   dominadas y después remo en tres mensajes, lo natural es **una sesión por fecha**,
-   reusando la del día si existe. Confirmarlo — afecta cómo quedan agrupados los datos.
-2. **¿Qué fecha usa?** La de recepción del mensaje (`recibido_en`) es lo simple, pero si
-   carga a la noche lo del día anterior queda mal. ¿Se puede decir "ayer" en el mensaje?
-3. **¿Qué pasa con un ejercicio sin match?** Hoy es un callejón sin salida. Opciones:
-   bloquear la confirmación hasta resolverlo, o dejar confirmar solo los que matchearon.
-   **No crear el ejercicio automáticamente** — eso es lo que partió `PB INCL MANC` en dos.
+### Paso 2 — ajustes del parser ✅ HECHO
 
-### Paso 2 — ajustes del parser con datos reales
+El nit detectado ya está corregido: con un conteo de series incoherente ("3 series"
+pero 4 reps listadas) ahora devuelve `confianza: "baja"`. La regla en el prompt es más
+general — **cualquier cosa anotada en `ambiguedad` implica confianza baja**.
 
-Recién después de usarlo. Tomar los mensajes donde falló y ajustar el prompt de
-`message_parser.py`. Un nit ya detectado: con un conteo de series incoherente
-("3 series" pero 4 reps listadas) devuelve `confianza: "alta"` aunque lo avise en
-`ambiguedad`; debería ser `"baja"`.
+Si aparecen mensajes reales donde el parser falla, este es el lugar para volver.
 
-### Paso 3 — alta de ejercicios desde el bot
+### Paso 3 — alta de ejercicios desde el bot (el siguiente)
 
-Hoy `hip thrust` no se puede cargar de ninguna forma vía Telegram. Flujo propuesto: el
-bot detecta el sin-match y **pregunta** ("¿lo agrego como HIP THRUST, grupo PIERNA?"),
-y recién con el sí explícito lo crea. Mantiene la regla de no inventar, pero destraba
+Hoy `hip thrust` no se puede cargar de ninguna forma vía Telegram: el mensaje se
+confirma `parcial` y ese ejercicio queda afuera para siempre. Flujo propuesto: el bot
+detecta el sin-match y **pregunta** ("¿lo agrego como HIP THRUST, grupo PIERNA?"), y
+recién con el sí explícito lo crea. Mantiene la regla de no inventar, pero destraba
 el caso.
+
+**Buena noticia: la infraestructura ya está.** El watchdog de cierre usa exactamente
+el mismo mecanismo de preguntar y esperar respuesta, así que hay que generalizarlo:
+
+- Hoy la pregunta pendiente vive en `Sesion.pregunta_cierre_en` — solo sirve para el
+  cierre. Hace falta algo más general (una pregunta pendiente con su contexto).
+- El parser ya tiene el tipo `respuesta` y recibe `pregunta_pendiente` en el prompt;
+  habría que pasarle **de qué** es la pregunta.
+
+**Decisión a preguntar:** el grupo muscular. ¿Lo propone el modelo y Manuel confirma,
+o lo tiene que escribir él? Proponerlo es menos fricción pero puede meter un grupo
+inventado en el catálogo.
 
 ### Paso 4 — Supabase (Fase 2)
 
@@ -364,7 +457,8 @@ Por esto es la regla 4 — SQLAlchemy core, nada de Flask-SQLAlchemy.
 ### Deuda conocida (no urgente)
 
 - **No hay `requirements.txt`.** Las dependencias están listadas en el README pero sin
-  fijar versiones.
+  fijar versiones. Ya mordió: en el arranque del 02/08 faltaban `python-dotenv`,
+  `sqlalchemy` y `anthropic`, y el server no levantaba.
 - **`/api/ejercicio/<nombre>` es un duplicado legacy** de `/api/gym/ejercicio/<nombre>`.
   El frontend usa el segundo. Se puede borrar el primero.
 - **Las fechas del 21/03/2026** siguen sin verificar (ver sección de arriba).

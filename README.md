@@ -46,6 +46,9 @@ pip install anthropic requests
 pip install google-api-python-client google-auth google-auth-oauthlib google-auth-httplib2
 ```
 
+Si el server no arranca con `ModuleNotFoundError`, corré el primer renglón de nuevo:
+`python-dotenv`, `sqlalchemy` y `anthropic` son los que suelen faltar.
+
 Los últimos dos renglones (Google) solo hacen falta si vas a usar el fallback a Google
 Sheets — ver la sección *Google Sheets* al final.
 
@@ -99,7 +102,21 @@ sin ese filtro cualquiera podría escribir en tu base y gastarte la API key.
 
 ### Por Telegram (lo más rápido)
 
-Mandale un mensaje al bot como te salga. No hay sintaxis que recordar:
+Arrancás la sesión, mandás los ejercicios como te salga, y la cerrás:
+
+```
+inicio: Push 02/08/26
+BP 75 x 3 x 6,4,3
+dominadas 3x8
+remo 60x10,10,8
+fin sesión
+```
+
+El mensaje de inicio acepta lo que quieras: `inicio sesión: Pierna`, `arranco pull`,
+con fecha o sin fecha. Las fechas son **día/mes** (`02/08/26` es el 2 de agosto) y
+también entiende "hoy" y "ayer". Si no ponés fecha, es hoy.
+
+Los ejercicios no tienen sintaxis que recordar:
 
 ```
 BP 75 x 3 x 6,4,3
@@ -122,9 +139,31 @@ El bot te contesta con **lo que entendió**, para que veas el error al toque:
 Si un ejercicio no está en tu catálogo **no lo inventa**: lo marca como sin match y te
 avisa. Eso evita que el mismo ejercicio termine con el historial partido en dos.
 
-Los mensajes caen en una **bandeja** arriba del tab ENTRENO. Todavía **no se guardan
-como series** — primero los revisás ahí. Se guarda el texto original tal cual lo
-escribiste, así siempre podés comparar contra lo que el parser entendió.
+Al mandar `fin sesión` te devuelve el resumen y, si tenías el reloj puesto, lo cruza con
+la actividad de **Fuerza** de Garmin:
+
+```
+Sesión cerrada.
+
+PUSH — 2026-08-02
+  PB, DOMINADAS, REMO
+  9 series · 2.775 kg
+Garmin: 73 min · FC 126/168 · 610 kcal
+```
+
+Otros comandos: `/estado` te dice qué sesión hay abierta, `/fin` la cierra, `/help`
+te recuerda todo esto.
+
+**Si te olvidás de cerrarla**, a las 5 horas el bot te pregunta si la damos por
+terminada. Pregunta una sola vez, no te va a insistir. Y si te olvidás del `inicio`,
+el mensaje no se pierde: al confirmarlo va a la sesión del día.
+
+Los mensajes caen en una **bandeja** arriba del tab ENTRENO. **No se guardan como series
+hasta que apretás CONFIRMAR** ahí — primero los revisás. Se guarda el texto original tal
+cual lo escribiste, así siempre podés comparar contra lo que el parser entendió.
+
+Si un mensaje traía un ejercicio que no está en tu catálogo, al confirmarlo se guardan
+**los que sí matchearon** y queda marcado como parcial.
 
 Para probar el parser sin Telegram:
 
