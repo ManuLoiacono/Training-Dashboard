@@ -222,10 +222,11 @@ def api_gym_sesiones():
 
 @app.route("/api/gym/sesiones", methods=["POST"])
 def api_gym_sesiones_create():
-    """Crear nueva sesión. Body: { fecha, dia_rutina, notas }."""
+    """Crear nueva sesión. Body: { fecha, dia_rutina, nombre, notas }."""
     data = request.get_json(force=True)
     fecha_str = data.get("fecha") or date_type.today().isoformat()
     dia = data.get("dia_rutina")
+    nombre = (data.get("nombre") or "").strip().upper() or None
     notas = data.get("notas", "")
 
     try:
@@ -244,7 +245,9 @@ def api_gym_sesiones_create():
 
     session = get_session()
     try:
-        s = Sesion(fecha=fecha, dia_rutina=dia, notas=notas)
+        # Las sesiones creadas desde ENTRENO nacen cerradas: el ciclo
+        # abierta/cerrada es del protocolo de Telegram.
+        s = Sesion(fecha=fecha, dia_rutina=dia, nombre=nombre, notas=notas)
         session.add(s)
         session.commit()
         return jsonify({"ok": True, "data": s.to_dict()}), 201
@@ -255,6 +258,46 @@ def api_gym_sesiones_create():
         session.close()
 
 
+# Cache en proceso de las actividades de fuerza de Garmin. Sin esto, abrir el
+# detalle de una sesión dispara una llamada de red por request.
+_CACHE_FUERZA = {"datos": None, "vence": 0.0}
+_CACHE_FUERZA_SEG = 600
+
+
+def _actividades_fuerza() -> list[dict]:
+    """Actividades de fuerza de Garmin, cacheadas. Ante cualquier falla, []."""
+    import time as _time
+    if not GARMIN_AVAILABLE:
+        return []
+    if _CACHE_FUERZA["datos"] is not None and _time.time() < _CACHE_FUERZA["vence"]:
+        return _CACHE_FUERZA["datos"]
+    try:
+        datos = garmin_client.fetch_strength_activities(days_back=180)
+    except Exception as e:
+        print(f"[GARMIN] No pude traer actividades de fuerza: {e}", flush=True)
+        datos = []
+    _CACHE_FUERZA["datos"] = datos
+    _CACHE_FUERZA["vence"] = _time.time() + _CACHE_FUERZA_SEG
+    return datos
+
+
+def _garmin_de_sesion(sesion) -> dict | None:
+    """Datos de la actividad de Garmin linkeada a una sesión, si tiene."""
+    if not sesion.garmin_activity_id:
+        return None
+    for act in _actividades_fuerza():
+        if act["activity_id"] == sesion.garmin_activity_id:
+            return {
+                "activity_id": act["activity_id"],
+                "inicio": act["inicio"].isoformat(),
+                "duracion_min": act["duracion_min"],
+                "fc_prom": act["fc_prom"],
+                "fc_max": act["fc_max"],
+                "calorias": act["calorias"],
+            }
+    return None
+
+
 @app.route("/api/gym/sesiones/<int:sesion_id>")
 def api_gym_sesion_detail(sesion_id):
     """Detalle de sesión con todas sus series y ejercicios."""
@@ -263,7 +306,9 @@ def api_gym_sesion_detail(sesion_id):
         s = session.query(Sesion).get(sesion_id)
         if not s:
             return jsonify({"ok": False, "error": "Sesión no encontrada"}), 404
-        return jsonify({"ok": True, "data": s.to_dict(include_series=True)})
+        data = s.to_dict(include_series=True)
+        data["garmin"] = _garmin_de_sesion(s)
+        return jsonify({"ok": True, "data": data})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
     finally:
@@ -450,14 +495,51 @@ def api_mensajes():
             .limit(limite)
             .all()
         )
+        abierta = models.sesion_abierta(session)
         return jsonify({
             "ok": True,
             "data": [m.to_dict() for m in mensajes],
             "bot_activo": TELEGRAM_AVAILABLE and telegram_bot.esta_configurado(),
+            "sesion_abierta": abierta.to_dict() if abierta else None,
         })
     except Exception as e:
         # Sin bandeja el dashboard tiene que seguir andando
         return jsonify({"ok": True, "data": [], "error": str(e)})
+    finally:
+        session.close()
+
+
+@app.route("/api/mensajes/<int:mensaje_id>/confirmar", methods=["POST"])
+def api_mensaje_confirmar(mensaje_id):
+    """
+    Escribe las series del mensaje en sesiones/series.
+    Los ejercicios sin match quedan afuera y el mensaje pasa a "parcial".
+    """
+    session = get_session()
+    try:
+        resultado = models.confirmar_mensaje(session, mensaje_id)
+        if not resultado.get("ok"):
+            return jsonify({"ok": False, **resultado}), 400
+        return jsonify(resultado)
+    except Exception as e:
+        session.rollback()
+        return jsonify({"ok": False, "error": str(e)}), 500
+    finally:
+        session.close()
+
+
+@app.route("/api/mensajes/<int:mensaje_id>/descartar", methods=["POST"])
+def api_mensaje_descartar(mensaje_id):
+    """Marca el mensaje como descartado. No escribe nada."""
+    session = get_session()
+    try:
+        resultado = models.descartar_mensaje(session, mensaje_id)
+        if not resultado.get("ok"):
+            return jsonify({"ok": False, **resultado}), 400
+        return jsonify(resultado)
+    except Exception as e:
+        session.rollback()
+        return jsonify({"ok": False, "error": str(e)}), 500
     finally:
         session.close()
 

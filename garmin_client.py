@@ -62,6 +62,89 @@ def fetch_running_activities(days_back: int = 180) -> list[dict]:
     return sorted(results, key=lambda r: r["fecha"])
 
 
+def fetch_strength_activities(days_back: int = 30) -> list[dict]:
+    """
+    Actividades de fuerza ("Fuerza" en el reloj) de los últimos N días.
+
+    El reloj NO registra series ni repeticiones (totalReps viene en 0): lo que
+    aporta es la ventana temporal y el costo fisiológico. El contenido del
+    entrenamiento sigue viniendo de los mensajes de Telegram.
+
+    Retorna: {activity_id, inicio, fin, duracion_min, fc_prom, fc_max, calorias, nombre}
+    con `inicio` y `fin` como datetime en hora local.
+    """
+    api = get_client()
+    if api is None:
+        return []
+
+    end_date = datetime.now().strftime("%Y-%m-%d")
+    start_date = (datetime.now() - timedelta(days=days_back)).strftime("%Y-%m-%d")
+
+    # Sin filtro de tipo: la API devuelve 400 con activitytype="strength_training"
+    # (a diferencia de "running", que sí acepta). Se filtra acá por typeKey.
+    try:
+        activities = api.get_activities_by_date(start_date, end_date)
+    except Exception as e:
+        print(f"[GARMIN] Error al descargar actividades de fuerza: {e}", flush=True)
+        return []
+
+    results = []
+    for act in activities:
+        if (act.get("activityType") or {}).get("typeKey") != "strength_training":
+            continue
+
+        # startTimeLocal viene como "2026-07-25 17:12:56"
+        raw = act.get("startTimeLocal") or ""
+        try:
+            inicio = datetime.strptime(raw, "%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            continue
+
+        duracion_sec = act.get("duration", 0) or 0
+        results.append({
+            "activity_id": str(act.get("activityId") or ""),
+            "inicio": inicio,
+            "fin": inicio + timedelta(seconds=duracion_sec),
+            "duracion_min": round(duracion_sec / 60, 1),
+            "fc_prom": round(act.get("averageHR") or 0),
+            "fc_max": round(act.get("maxHR") or 0),
+            "calorias": round(act.get("calories") or 0),
+            "nombre": act.get("activityName") or "",
+        })
+
+    return sorted(results, key=lambda r: r["inicio"])
+
+
+def buscar_actividad_fuerza(inicio, fin=None, tolerancia_min: int = 120) -> dict | None:
+    """
+    La actividad de fuerza que corresponde a una sesión que va de `inicio` a `fin`
+    (datetimes locales). Matchea por solape de ventanas, con tolerancia para
+    cubrir que el reloj se arranca y se corta a destiempo del bot.
+
+    Si hay varias candidatas, gana la que empieza más cerca del inicio.
+    Retorna None si no hay ninguna: entrenar sin el reloj es un caso válido.
+    """
+    if inicio is None:
+        return None
+    fin = fin or inicio
+
+    # La ventana de búsqueda tiene que llegar hasta la fecha pedida: una sesión
+    # de hace dos semanas no se encuentra mirando solo los últimos días.
+    dias_atras = (datetime.now() - inicio).days + 2
+    dias_atras = max(3, min(dias_atras, 365))
+
+    margen = timedelta(minutes=tolerancia_min)
+    candidatas = []
+    for act in fetch_strength_activities(days_back=dias_atras):
+        # Solape entre [inicio, fin] y la actividad, con margen a los costados
+        if act["fin"] + margen >= inicio and act["inicio"] - margen <= fin:
+            candidatas.append(act)
+
+    if not candidatas:
+        return None
+    return min(candidatas, key=lambda a: abs((a["inicio"] - inicio).total_seconds()))
+
+
 def fetch_sleep_data(days_back: int = 28) -> list[dict]:
     """
     Descarga datos de sueño de los últimos N días.
