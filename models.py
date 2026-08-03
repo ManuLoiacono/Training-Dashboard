@@ -152,6 +152,52 @@ class Serie(Base):
         }
 
 
+class PreguntaPendiente(Base):
+    """
+    Una pregunta que el bot hizo por Telegram y todavía espera respuesta.
+
+    Nació generalizando `Sesion.pregunta_cierre_en`, que solo servía para el
+    cierre de sesión. Al agregar el alta de ejercicios hicieron falta dos cosas
+    que un timestamp en la sesión no da: saber DE QUÉ es la pregunta (para que
+    el parser interprete la respuesta) y guardar el contexto para ejecutarla
+    (qué alias, de qué mensaje de la bandeja).
+
+    Solo se atiende UNA a la vez: la más vieja que siga abierta. Si un mensaje
+    trae dos ejercicios sin match se encolan las dos y la segunda se pregunta
+    recién cuando se resuelve la primera.
+    """
+    __tablename__ = "preguntas_pendientes"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    # cierre_sesion | alta_ejercicio
+    tipo = Column(Text, nullable=False)
+    # El texto que se mandó al chat, para reconstruir el contexto del parser
+    pregunta = Column(Text)
+    # JSON con lo necesario para ejecutar la respuesta (alias, mensaje_id...)
+    contexto_json = Column(Text)
+    # abierta | respondida | cancelada
+    estado = Column(Text, nullable=False, default="abierta")
+    creada_en = Column(DateTime, default=ahora)
+    respondida_en = Column(DateTime, nullable=True)
+
+    def contexto(self) -> dict:
+        import json
+        try:
+            return json.loads(self.contexto_json) if self.contexto_json else {}
+        except json.JSONDecodeError:
+            return {}
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "tipo": self.tipo,
+            "pregunta": self.pregunta or "",
+            "contexto": self.contexto(),
+            "estado": self.estado,
+            "creada_en": self.creada_en.isoformat() if self.creada_en else "",
+        }
+
+
 class MensajeParseado(Base):
     """
     Bandeja de entrada del bot de Telegram.
@@ -431,6 +477,233 @@ def resumen_sesion(session, sesion):
 
 
 # ─────────────────────────────────────────────
+# Preguntas pendientes del bot
+# ─────────────────────────────────────────────
+#
+# El bot pregunta y espera. Dos casos hoy:
+#
+#   cierre_sesion   "la sesión sigue abierta, ¿la cerramos?"  -> sí / no
+#   alta_ejercicio  "'hip thrust' no está, ¿qué grupo es?"    -> el grupo
+#
+# Una pregunta vieja no se contesta nunca: si mandás "sí" doce horas después,
+# lo más probable es que sea sobre otra cosa. Pasado ese plazo se cancela sola.
+HORAS_VALIDEZ_PREGUNTA = 12
+
+
+def crear_pregunta(session, tipo, pregunta, contexto=None):
+    """Registra una pregunta hecha por el bot y la deja esperando respuesta."""
+    import json as _json
+
+    p = PreguntaPendiente(
+        tipo=tipo,
+        pregunta=pregunta,
+        contexto_json=_json.dumps(contexto or {}),
+        estado="abierta",
+    )
+    session.add(p)
+    session.commit()
+    return p
+
+
+def pregunta_pendiente_actual(session):
+    """
+    La pregunta que el bot está esperando que contestes, o None.
+
+    De paso cancela las vencidas: es el único lugar por el que pasan todas,
+    y así no hace falta otro watchdog.
+    """
+    limite = ahora() - timedelta(hours=HORAS_VALIDEZ_PREGUNTA)
+    vencidas = (
+        session.query(PreguntaPendiente)
+        .filter(
+            PreguntaPendiente.estado == "abierta",
+            PreguntaPendiente.creada_en.isnot(None),
+            PreguntaPendiente.creada_en < limite,
+        )
+        .all()
+    )
+    if vencidas:
+        for p in vencidas:
+            p.estado = "cancelada"
+        session.commit()
+
+    return (
+        session.query(PreguntaPendiente)
+        .filter(PreguntaPendiente.estado == "abierta")
+        .order_by(PreguntaPendiente.creada_en, PreguntaPendiente.id)
+        .first()
+    )
+
+
+def cerrar_pregunta(session, pregunta, estado="respondida"):
+    """Marca la pregunta como contestada (o cancelada). Idempotente."""
+    if pregunta is None:
+        return None
+    pregunta.estado = estado
+    pregunta.respondida_en = ahora()
+    session.commit()
+    return pregunta
+
+
+def cancelar_preguntas(session, tipo) -> int:
+    """
+    Cierra las preguntas de un tipo que quedaron sin contestar. Se usa cuando
+    el evento las volvió irrelevantes: si cerraste la sesión a mano, preguntar
+    si la cerramos ya no tiene sentido.
+    """
+    abiertas = (
+        session.query(PreguntaPendiente)
+        .filter(
+            PreguntaPendiente.tipo == tipo,
+            PreguntaPendiente.estado == "abierta",
+        )
+        .all()
+    )
+    for p in abiertas:
+        p.estado = "cancelada"
+        p.respondida_en = ahora()
+    if abiertas:
+        session.commit()
+    return len(abiertas)
+
+
+def hay_pregunta_alta_abierta(session, alias) -> bool:
+    """
+    ¿Ya preguntamos por este alias? Evita encolar la misma pregunta dos veces
+    si mandás el mismo ejercicio sin match en dos mensajes seguidos.
+    """
+    alias_norm = (alias or "").strip().upper()
+    if not alias_norm:
+        return False
+    abiertas = (
+        session.query(PreguntaPendiente)
+        .filter(
+            PreguntaPendiente.tipo == "alta_ejercicio",
+            PreguntaPendiente.estado == "abierta",
+        )
+        .all()
+    )
+    return any(
+        (p.contexto().get("alias") or "").strip().upper() == alias_norm
+        for p in abiertas
+    )
+
+
+def _completar_mensajes_con_ejercicio(session, alias, ejercicio) -> int:
+    """
+    Rellena el `ejercicio_id` que faltaba en los mensajes de la bandeja que
+    mencionaban este alias. Sin esto el alta serviría a medias: el ejercicio
+    existiría en el catálogo pero las series que lo estrenaron quedarían afuera.
+
+    Un mensaje que ya estaba "parcial" vuelve a "parseado" para que se pueda
+    confirmar de nuevo; las series ya escritas no se duplican porque quedaron
+    marcadas con `confirmado` (ver confirmar_mensaje).
+    """
+    import json as _json
+
+    alias_norm = (alias or "").strip().upper()
+    if not alias_norm:
+        return 0
+
+    mensajes = (
+        session.query(MensajeParseado)
+        .filter(
+            MensajeParseado.tipo == "series",
+            MensajeParseado.estado.in_(("parseado", "parcial")),
+        )
+        .all()
+    )
+
+    tocados = 0
+    for m in mensajes:
+        try:
+            parse = _json.loads(m.parse_json) if m.parse_json else None
+        except _json.JSONDecodeError:
+            continue
+        if not parse or not parse.get("ejercicios"):
+            continue
+
+        cambio = False
+        for ej in parse["ejercicios"]:
+            if ej.get("ejercicio_id"):
+                continue
+            if (ej.get("alias_detectado") or "").strip().upper() != alias_norm:
+                continue
+            ej["ejercicio_id"] = ejercicio.id
+            ej["nombre_catalogo"] = ejercicio.nombre
+            cambio = True
+
+        if cambio:
+            m.parse_json = _json.dumps(parse)
+            if m.estado == "parcial":
+                m.estado = "parseado"
+            tocados += 1
+
+    if tocados:
+        session.commit()
+    return tocados
+
+
+def crear_ejercicio_desde_alias(session, alias, grupo_muscular):
+    """
+    Da de alta un ejercicio con el nombre que se escribió en el mensaje y el
+    grupo que dijo Manuel, y completa los mensajes de la bandeja que lo
+    estaban esperando.
+
+    El grupo lo escribe él a propósito: que lo proponga el modelo abarata la
+    interacción pero mete grupos inventados en un catálogo que después ordena
+    todos los gráficos.
+
+    Retorna dict con "ok". No lanza: el llamador chequea.
+    """
+    nombre = (alias or "").strip().upper()
+    grupo = (grupo_muscular or "").strip().upper()
+    if not nombre:
+        return {"ok": False, "error": "Falta el nombre del ejercicio"}
+    if not grupo:
+        return {"ok": False, "error": "Falta el grupo muscular"}
+
+    existente = (
+        session.query(Ejercicio)
+        .filter(Ejercicio.nombre == nombre)
+        .first()
+    )
+    if existente is not None:
+        # Puede pasar si lo cargaste desde ENTRENO mientras la pregunta estaba
+        # abierta. No es un error: se reusa y se completan los mensajes igual.
+        completados = _completar_mensajes_con_ejercicio(session, alias, existente)
+        return {
+            "ok": True,
+            "ya_existia": True,
+            "ejercicio": existente.to_dict(),
+            "mensajes_completados": completados,
+        }
+
+    ejercicio = Ejercicio(nombre=nombre, grupo_muscular=grupo)
+    session.add(ejercicio)
+    session.commit()
+
+    completados = _completar_mensajes_con_ejercicio(session, alias, ejercicio)
+    return {
+        "ok": True,
+        "ya_existia": False,
+        "ejercicio": ejercicio.to_dict(),
+        "mensajes_completados": completados,
+    }
+
+
+def grupos_musculares(session) -> list[str]:
+    """Los grupos que ya existen en el catálogo, para sugerirlos al preguntar."""
+    filas = (
+        session.query(Ejercicio.grupo_muscular)
+        .distinct()
+        .order_by(Ejercicio.grupo_muscular)
+        .all()
+    )
+    return [f[0] for f in filas if f[0]]
+
+
+# ─────────────────────────────────────────────
 # Bandeja: confirmar / descartar
 # ─────────────────────────────────────────────
 
@@ -467,7 +740,11 @@ def confirmar_mensaje(session, mensaje_id):
 
     Los ejercicios sin match se saltean y el mensaje queda en "parcial":
     no se crea el ejercicio automáticamente, que es lo que en su momento
-    partió PB INCL MANC en dos.
+    partió PB INCL MANC en dos. Se dan de alta preguntando por Telegram, y
+    ahí el mensaje vuelve a "parseado" para confirmar lo que faltaba.
+
+    Por eso cada ejercicio ya escrito queda marcado con `confirmado` en el
+    parse: confirmar dos veces el mismo mensaje escribe solo lo nuevo.
 
     Retorna dict con el resultado. No lanza: el llamador chequea "ok".
     """
@@ -492,7 +769,12 @@ def confirmar_mensaje(session, mensaje_id):
 
     creadas = 0
     sin_match = []
+    ya_estaban = 0
     for ej in parse["ejercicios"]:
+        if ej.get("confirmado"):
+            ya_estaban += 1
+            continue
+
         ejercicio_id = ej.get("ejercicio_id")
         if not ejercicio_id:
             sin_match.append(ej.get("alias_detectado") or "?")
@@ -516,17 +798,26 @@ def confirmar_mensaje(session, mensaje_id):
                 peso_kg=float(s.get("peso_kg") or 0),
             ))
             creadas += 1
+        ej["confirmado"] = True
 
     if creadas == 0 and sin_match:
         session.rollback()
         return {
             "ok": False,
-            "error": "Ningún ejercicio matcheó el catálogo",
+            "error": (
+                "Lo que falta sigue sin matchear el catálogo"
+                if ya_estaban else
+                "Ningún ejercicio matcheó el catálogo"
+            ),
             "sin_match": sin_match,
         }
+    if creadas == 0 and ya_estaban:
+        session.rollback()
+        return {"ok": False, "error": "Ya se confirmaron todas las series de este mensaje"}
 
     mensaje.estado = "parcial" if sin_match else "confirmado"
     mensaje.sesion_id = sesion.id
+    mensaje.parse_json = _json.dumps(parse)
     session.commit()
 
     return {

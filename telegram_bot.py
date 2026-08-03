@@ -12,6 +12,10 @@ El protocolo de sesión es explícito, para no adivinar fecha ni agrupación:
 
 Si te olvidás de cerrarla, a las horas el bot pregunta.
 
+Un ejercicio que no está en el catálogo tampoco se inventa: el bot pregunta
+de qué grupo muscular es, y con esa respuesta lo crea y completa el mensaje
+que había quedado sin match.
+
 Usa long polling: no hace falta URL pública ni túnel. Telegram guarda
 los mensajes ~24hs, así que si la PC está apagada entran al prender.
 
@@ -63,7 +67,9 @@ AYUDA = (
     "Y para terminar:\n"
     "  fin sesión\n\n"
     "Te contesto lo que entendí y queda en la bandeja del dashboard "
-    "para que lo confirmes."
+    "para que lo confirmes.\n\n"
+    "Si mandás un ejercicio que no tengo en el catálogo, te pregunto de qué "
+    "grupo muscular es y lo agrego con lo que me digas."
 )
 
 
@@ -146,6 +152,8 @@ def _manejar_inicio(session, parse, chat_id) -> str:
         fecha = date_type.today()
 
     nueva, previa = models.abrir_sesion(session, fecha, parse.nombre_sesion)
+    # La pregunta de cierre era sobre la sesión anterior: ya no aplica
+    models.cancelar_preguntas(session, "cierre_sesion")
 
     lineas = []
     if previa is not None:
@@ -163,13 +171,124 @@ def _manejar_fin(session, chat_id) -> str:
     """Cierra la sesión abierta, la linkea con Garmin y devuelve el resumen."""
     abierta = models.sesion_abierta(session)
     if abierta is None:
+        models.cancelar_preguntas(session, "cierre_sesion")
         return "No hay ninguna sesión abierta. Para arrancar: inicio: Push"
 
     models.cerrar_sesion(session, abierta)
+    models.cancelar_preguntas(session, "cierre_sesion")
     resumen = models.resumen_sesion(session, abierta)
     texto = "Sesión cerrada.\n\n" + _texto_resumen(resumen)
     texto += _linkear_garmin(session, abierta)
     return texto
+
+
+# ─────────────────────────────────────────────
+# Alta de ejercicios nuevos
+# ─────────────────────────────────────────────
+#
+# Un ejercicio que no está en el catálogo no se inventa: el bot pregunta el
+# grupo muscular y espera. El grupo lo escribe Manuel — que lo proponga el
+# modelo es más cómodo pero mete grupos inventados en el catálogo, y de ahí
+# salen los gráficos.
+
+
+def _sugerencia_grupos(session) -> str:
+    grupos = models.grupos_musculares(session)
+    return " / ".join(grupos) if grupos else "PECHO / ESPALDA / PIERNA / HOMBRO / BRAZO"
+
+
+def _texto_pregunta_alta(session, alias: str) -> str:
+    return (
+        f"\"{alias}\" no está en el catálogo. ¿De qué grupo muscular es?\n"
+        f"({_sugerencia_grupos(session)})\n"
+        f"Si no lo querés agregar, contestame \"no\"."
+    )
+
+
+def _encolar_altas(session, parse, mensaje_id) -> None:
+    """
+    Deja una pregunta por cada ejercicio del mensaje que no matcheó.
+    Se hacen de a una: la segunda se pregunta cuando se resuelve la primera.
+    """
+    vistos = set()
+    for ej in parse.ejercicios:
+        if ej.ejercicio_id:
+            continue
+        alias = (ej.alias_detectado or "").strip()
+        clave = alias.upper()
+        if not alias or clave in vistos:
+            continue
+        vistos.add(clave)
+        if models.hay_pregunta_alta_abierta(session, alias):
+            continue
+        models.crear_pregunta(
+            session,
+            "alta_ejercicio",
+            _texto_pregunta_alta(session, alias),
+            {"alias": alias, "mensaje_id": mensaje_id},
+        )
+
+
+def _siguiente_pregunta(session) -> str:
+    """Si quedó otra pregunta encolada, se hace ahora que se liberó el turno."""
+    pendiente = models.pregunta_pendiente_actual(session)
+    return f"\n\n{pendiente.pregunta}" if pendiente else ""
+
+
+def _responder_alta(session, parse, pregunta) -> str:
+    """Contesta la pregunta del grupo muscular: crea el ejercicio, o no."""
+    alias = pregunta.contexto().get("alias", "")
+
+    if (parse.respuesta or "").lower().startswith("n"):
+        models.cerrar_pregunta(session, pregunta, estado="cancelada")
+        return f"Dale, dejo \"{alias}\" afuera." + _siguiente_pregunta(session)
+
+    grupo = (parse.respuesta_texto or "").strip()
+    if not grupo:
+        # La pregunta sigue abierta: repreguntar acá no es insistir, es
+        # contestar a un mensaje que él mandó.
+        return (
+            f"No te entendí el grupo. ¿De qué grupo muscular es \"{alias}\"?\n"
+            f"({_sugerencia_grupos(session)})"
+        )
+
+    resultado = models.crear_ejercicio_desde_alias(session, alias, grupo)
+    if not resultado.get("ok"):
+        return f"No pude agregarlo: {resultado.get('error')}"
+
+    models.cerrar_pregunta(session, pregunta)
+    ejercicio = resultado["ejercicio"]
+    lineas = []
+    if resultado["ya_existia"]:
+        lineas.append(
+            f"{ejercicio['nombre']} ya estaba en el catálogo "
+            f"({ejercicio['grupo_muscular']})."
+        )
+    else:
+        lineas.append(
+            f"Listo, agregué {ejercicio['nombre']} ({ejercicio['grupo_muscular']})."
+        )
+    completados = resultado["mensajes_completados"]
+    if completados:
+        plural = "s" if completados > 1 else ""
+        lineas.append(
+            f"Ya lo completé en {completados} mensaje{plural} de la bandeja; "
+            f"confirmalo en el dashboard."
+        )
+    return "\n".join(lineas) + _siguiente_pregunta(session)
+
+
+def _manejar_respuesta(session, parse, pregunta, chat_id) -> str:
+    """Enruta la respuesta según de qué era la pregunta."""
+    if pregunta.tipo == "alta_ejercicio":
+        return _responder_alta(session, parse, pregunta)
+
+    # cierre_sesion
+    models.cerrar_pregunta(session, pregunta)
+    if (parse.respuesta or "").lower().startswith("s"):
+        return _manejar_fin(session, chat_id)
+    # Sigue entrenando: no volvemos a preguntar por esta sesión
+    return "Dale, la dejo abierta. Avisame con 'fin sesión'." + _siguiente_pregunta(session)
 
 
 def procesar_mensaje(texto: str, chat_id: int, message_id: int) -> None:
@@ -200,14 +319,14 @@ def procesar_mensaje(texto: str, chat_id: int, message_id: int) -> None:
     session = get_session()
     try:
         abierta = models.sesion_abierta(session)
-        pregunta_pendiente = abierta is not None and abierta.pregunta_cierre_en is not None
+        pregunta = models.pregunta_pendiente_actual(session)
 
         # 1) Parsear. Si la API falla, el mensaje igual queda registrado.
         try:
             parse = message_parser.parsear(
                 texto,
                 sesion_abierta=abierta,
-                pregunta_pendiente=pregunta_pendiente,
+                pregunta_pendiente=pregunta,
             )
         except Exception as e:
             session.add(MensajeParseado(
@@ -242,14 +361,11 @@ def procesar_mensaje(texto: str, chat_id: int, message_id: int) -> None:
 
         elif tipo == "respuesta":
             estado = "aplicado"
-            if not pregunta_pendiente:
+            if pregunta is None:
                 respuesta = "No te entendí. Probá /help"
                 tipo = "otro"
-            elif (parse.respuesta or "").lower().startswith("s"):
-                respuesta = _manejar_fin(session, chat_id)
             else:
-                # Sigue entrenando: no volvemos a preguntar por esta sesión
-                respuesta = "Dale, la dejo abierta. Avisame con 'fin sesión'."
+                respuesta = _manejar_respuesta(session, parse, pregunta, chat_id)
 
         elif tipo == "otro":
             respuesta = "No entendí qué querés hacer. Probá /help"
@@ -279,6 +395,12 @@ def procesar_mensaje(texto: str, chat_id: int, message_id: int) -> None:
                     "al confirmarlo va a la sesión del día."
                 )
             respuesta += "\n\n(en la bandeja, todavía sin confirmar)"
+
+            # Los ejercicios que no matchearon se pueden dar de alta acá mismo:
+            # sin esto quedaban afuera para siempre.
+            _encolar_altas(session, parse, registro.id)
+            if pregunta is None:
+                respuesta += _siguiente_pregunta(session)
         else:
             # Mensaje de control: queda como registro, sin series que confirmar
             session.add(MensajeParseado(
@@ -307,9 +429,17 @@ def _texto_estado() -> str:
     try:
         abierta = models.sesion_abierta(session)
         if abierta is None:
-            return "No hay ninguna sesión abierta. Para arrancar: inicio: Push"
-        resumen = models.resumen_sesion(session, abierta)
-        return "Sesión ABIERTA\n\n" + _texto_resumen(resumen)
+            texto = "No hay ninguna sesión abierta. Para arrancar: inicio: Push"
+        else:
+            resumen = models.resumen_sesion(session, abierta)
+            texto = "Sesión ABIERTA\n\n" + _texto_resumen(resumen)
+
+        # Si quedó algo esperando respuesta, recordarlo acá: /estado lo pediste
+        # vos, así que no cuenta como insistir.
+        pendiente = models.pregunta_pendiente_actual(session)
+        if pendiente is not None:
+            texto += f"\n\nEsperando tu respuesta:\n{pendiente.pregunta}"
+        return texto
     finally:
         session.close()
 
@@ -327,13 +457,18 @@ def revisar_sesiones_abiertas() -> None:
         for sesion in models.sesiones_para_preguntar_cierre(session):
             nombre = sesion.nombre or "sin nombre"
             desde = sesion.iniciada_en.strftime("%H:%M") if sesion.iniciada_en else ""
-            enviar(
-                int(ALLOWED_USER_ID),
+            texto = (
                 f"La sesión {nombre} sigue abierta desde las {desde}. "
-                f"¿La cerramos?",
+                f"¿La cerramos?"
             )
+            enviar(int(ALLOWED_USER_ID), texto)
+            # pregunta_cierre_en es la marca de "ya preguntamos, no insistir";
+            # la fila en preguntas_pendientes es la que espera la respuesta.
             sesion.pregunta_cierre_en = models.ahora()
             session.commit()
+            models.crear_pregunta(
+                session, "cierre_sesion", texto, {"sesion_id": sesion.id}
+            )
             print(f"[TG] Pregunté por la sesión abierta #{sesion.id}", flush=True)
     except Exception as e:
         session.rollback()

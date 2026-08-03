@@ -136,8 +136,31 @@ El bot te contesta con **lo que entendió**, para que veas el error al toque:
    reps: 6, 4, 3   vol: 975 kg
 ```
 
-Si un ejercicio no está en tu catálogo **no lo inventa**: lo marca como sin match y te
-avisa. Eso evita que el mismo ejercicio termine con el historial partido en dos.
+Si un ejercicio no está en tu catálogo **no lo inventa**: te pregunta de qué grupo
+muscular es y lo agrega con lo que le contestes.
+
+```
+VOS:  hip thrust 80 3x10
+BOT:  [SIN MATCH] ?? hip thrust — 3 series @ 80kg
+         reps: 10, 10, 10   vol: 2.400 kg
+      (en la bandeja, todavía sin confirmar)
+
+      "hip thrust" no está en el catálogo. ¿De qué grupo muscular es?
+      (BICEP / CORE / ESPALDA / HOMBRO / PECHO / PIERNA / TRICEP)
+      Si no lo querés agregar, contestame "no".
+
+VOS:  pierna
+BOT:  Listo, agregué HIP THRUST (PIERNA).
+      Ya lo completé en 1 mensaje de la bandeja; confirmalo en el dashboard.
+```
+
+El grupo lo escribís vos a propósito: si lo adivinara el bot, tarde o temprano te mete
+un grupo inventado en el catálogo y con eso se arman todos los gráficos. El nombre sale
+de lo que escribiste, en mayúsculas.
+
+Si en un mismo mensaje hay dos ejercicios nuevos, te pregunta de a uno: el segundo
+recién cuando resolvés el primero. Y si no contestás, la pregunta se vence sola a las
+12 horas — un "sí" al otro día casi seguro es sobre otra cosa.
 
 Al mandar `fin sesión` te devuelve el resumen y, si tenías el reloj puesto, lo cruza con
 la actividad de **Fuerza** de Garmin:
@@ -151,8 +174,8 @@ PUSH — 2026-08-02
 Garmin: 73 min · FC 126/168 · 610 kcal
 ```
 
-Otros comandos: `/estado` te dice qué sesión hay abierta, `/fin` la cierra, `/help`
-te recuerda todo esto.
+Otros comandos: `/estado` te dice qué sesión hay abierta (y si quedó algo esperando tu
+respuesta), `/fin` la cierra, `/help` te recuerda todo esto.
 
 **Si te olvidás de cerrarla**, a las 5 horas el bot te pregunta si la damos por
 terminada. Pregunta una sola vez, no te va a insistir. Y si te olvidás del `inicio`,
@@ -163,7 +186,10 @@ hasta que apretás CONFIRMAR** ahí — primero los revisás. Se guarda el texto
 cual lo escribiste, así siempre podés comparar contra lo que el parser entendió.
 
 Si un mensaje traía un ejercicio que no está en tu catálogo, al confirmarlo se guardan
-**los que sí matchearon** y queda marcado como parcial.
+**los que sí matchearon** y queda marcado como parcial. Cuando después le contestás al
+bot el grupo muscular, ese mensaje se completa solo y vuelve a tener el botón
+CONFIRMAR: al apretarlo entran únicamente las series que faltaban, las ya guardadas no
+se duplican (aparecen con un ✓).
 
 Para probar el parser sin Telegram:
 

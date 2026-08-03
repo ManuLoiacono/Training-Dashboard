@@ -72,6 +72,10 @@ MensajeParseado  id, telegram_message_id, texto_original, parse_json,
                  estado (parseado|error|confirmado|parcial|descartado|aplicado),
                  error, tipo (series|inicio|fin|respuesta|otro),
                  sesion_id → Sesion, recibido_en
+
+PreguntaPendiente  id, tipo (cierre_sesion|alta_ejercicio), pregunta,
+                   contexto_json, estado (abierta|respondida|cancelada),
+                   creada_en, respondida_en
 ```
 
 **`nombre` es cómo Manuel piensa el entrenamiento hoy**: PUSH, PULL, PIERNA.
@@ -120,7 +124,8 @@ el frontend y los endpoints de análisis no tengan que cambiar.
 
 **Bandeja de Telegram**
 - `GET /api/mensajes` — últimos mensajes parseados (`?limite=N`, default 20) +
-  `bot_activo` + `sesion_abierta`
+  `bot_activo` + `sesion_abierta` + `pregunta_pendiente` (lo que el bot espera
+  que contestes por Telegram; se contesta en el chat, el panel solo lo muestra)
 - `POST /api/mensajes/<id>/confirmar` — escribe las series en sesiones/series
 - `POST /api/mensajes/<id>/descartar` — no escribe nada
 
@@ -177,6 +182,48 @@ Reglas del ciclo de vida (todo en `models.py`):
 - **Sin sesión abierta el mensaje no se pierde**: se guarda igual, y al confirmarlo
   cae en la sesión del día (se reusa la que exista, o se crea una).
 
+### Preguntas pendientes
+
+El bot pregunta y espera. Empezó siendo `Sesion.pregunta_cierre_en` (un timestamp,
+solo para el cierre) y se generalizó en la tabla **`preguntas_pendientes`** al agregar
+el alta de ejercicios, que necesita dos cosas que un timestamp no da: saber **de qué**
+es la pregunta (para que el parser interprete la respuesta) y guardar el **contexto**
+para ejecutarla (qué alias, de qué mensaje).
+
+- Se atiende **una sola a la vez**: la más vieja abierta. Dos ejercicios sin match en
+  un mensaje encolan dos preguntas, y la segunda se hace al resolver la primera.
+- **Vencen a las `HORAS_VALIDEZ_PREGUNTA` (12).** Un "sí" doce horas después casi
+  seguro es sobre otra cosa. Se cancelan solas dentro de `pregunta_pendiente_actual()`,
+  que es el único lugar por el que pasan todas — por eso no hay otro watchdog.
+- Un `inicio` o un `fin` cancelan la pregunta de cierre: el evento la volvió irrelevante.
+- `pregunta_cierre_en` **sigue existiendo** y es la marca de "ya preguntamos, no
+  insistir"; la fila en `preguntas_pendientes` es la que espera la respuesta.
+
+### Alta de ejercicios desde el bot
+
+Un ejercicio fuera del catálogo no se inventa **nunca** (es lo que partió
+`PB INCL MANC` en dos). Antes eso era un callejón sin salida: el mensaje quedaba
+`parcial` y esas series se perdían. Ahora el bot pregunta:
+
+```
+"hip thrust 80 3x10"   → queda en la bandeja SIN MATCH, y el bot pregunta el grupo
+"pierna"               → crea HIP THRUST (PIERNA) y completa el mensaje pendiente
+```
+
+**El grupo muscular lo escribe Manuel, no lo propone el modelo.** Es su decisión:
+proponerlo abarata la interacción pero mete grupos inventados en un catálogo que
+ordena todos los gráficos. El nombre sí sale del alias tal cual lo escribió.
+
+Al crear el ejercicio, `_completar_mensajes_con_ejercicio()` rellena el `ejercicio_id`
+que faltaba en los mensajes de la bandeja que mencionaban ese alias. Sin eso el alta
+serviría a medias: el ejercicio existiría pero las series que lo estrenaron quedarían
+afuera igual.
+
+> ⚠️ **Confirmar es re-ejecutable, y por eso cada ejercicio ya escrito queda marcado
+> con `confirmado: true` dentro de `parse_json`.** Un mensaje `parcial` que se completa
+> vuelve a `parseado` para poder confirmar lo que faltaba; sin esa marca, la segunda
+> confirmación **duplicaría** las series que ya estaban.
+
 ### Flujo
 
 ```
@@ -191,7 +238,8 @@ del bot te muestra el error al toque, pero nada toca la base sin que lo mires.
 
 Al confirmar, los ejercicios **sin match se saltean** y el mensaje queda en `parcial`
 en vez de `confirmado`. Si no matcheó ninguno, no se escribe nada y falla. **Nunca se
-crea un ejercicio automáticamente** (ver Paso 3).
+crea un ejercicio automáticamente**: se dan de alta contestándole al bot el grupo
+muscular, y ahí el mensaje vuelve a estar confirmable.
 
 ### El link con Garmin
 
@@ -215,7 +263,14 @@ Modelo **`claude-haiku-4-5`**. Es extracción contra un catálogo fijo, no razon
   Un mensaje puede abrir la sesión **y** traer series ("arranco push: BP 75x3x6,4,3").
 - **Recibe el estado del bot** (`sesion_abierta`, `pregunta_pendiente`) en el system
   prompt. Sin eso no puede distinguir un "sí" que contesta una pregunta del bot de un
-  "sí" suelto — el primero es `respuesta`, el segundo es `otro`.
+  "sí" suelto — el primero es `respuesta`, el segundo es `otro`. `pregunta_pendiente`
+  es el objeto, no un bool: importa **de qué** es. Un `"pierna"` suelto es `otro`, pero
+  con un alta esperando es `respuesta` con `respuesta_texto: "PIERNA"`.
+- **Un ejercicio que no matchea se devuelve igual**, con `ejercicio_id: null` y sus
+  series. Nunca se omite de la lista: esa entrada es la que dispara la pregunta del
+  alta. Haiku tendía a devolver `ejercicios: []` cuando el mensaje traía **un solo**
+  ejercicio y no matcheaba — las reglas no alcanzaron, lo arregló el ejemplo trabajado
+  que está en la regla 2 del prompt.
 - Usa `client.messages.parse()` con un esquema **Pydantic** (`MensajeParse`) — structured
   outputs garantiza JSON válido, así que no hay regex sobre la salida ni reintentos.
 - **Sin `effort` y sin `thinking`**: Haiku 4.5 rechaza `effort`, y para esta tarea no aporta.
@@ -228,6 +283,10 @@ Modelo **`claude-haiku-4-5`**. Es extracción contra un catálogo fijo, no razon
   caching **no sirve acá** — Haiku necesita 4096 tokens de prefijo y el prompt ronda los 1000.
 
 Probarlo suelto: `python message_parser.py "BP 75 x 3 x 6,4,3"`
+
+> ⚠️ `INSTRUCCIONES` se arma con `str.format()`, así que **una llave literal en el
+> prompt lo rompe** (`KeyError`). Por eso el ejemplo de la regla 2 está escrito como
+> lista indentada y no como JSON. Si hace falta JSON de verdad, duplicar: `{{` y `}}`.
 
 ### El bot (`telegram_bot.py`)
 
@@ -342,14 +401,16 @@ y contienen datos personales o secretos. Verificar con `git status` antes de `gi
 ## Estado actual
 
 Roadmap F-01 a F-04 implementado, migración a SQLite hecha, y carga por Telegram andando
-punta a punta con sesiones explícitas y confirmación (02/08/2026).
+punta a punta con sesiones explícitas, confirmación y alta de ejercicios (03/08/2026).
 
 - F-01 score semanal · F-02 progresión por ejercicio · F-03 correlaciones cruzadas · F-04 sueño
 - Gimnasio en SQLite con CRUD completo y tab ENTRENO
 - Bot de Telegram + parser con Claude → bandeja de entrada
 - Sesiones por Telegram (`inicio` / `fin`), botones de confirmar y link con Garmin
+- Alta de ejercicios contestándole al bot el grupo muscular (`preguntas_pendientes`)
 
-DB: 22 ejercicios, 9 sesiones, 137 series. Garmin conectado, 17 PDFs parseados.
+DB: 22 ejercicios, 9 sesiones, 137 series. Garmin conectado, 2 PDFs parseados
+(verificado contra el banner del server el 03/08/2026 — antes decía 17, era un error).
 
 ### Sobre el entorno de trabajo
 
@@ -388,9 +449,9 @@ desde ENTRENO, con pesos que no aparecen en ninguna otra.
 
 ## Plan — próximos pasos
 
-Estado al 02/08/2026. Los pasos 0, 1 y 2 están **hechos**. El siguiente es el 3, y
-depende de haber usado el protocolo de sesión un tiempo. Cada uno lista las decisiones
-que **hay que preguntarle a Manuel** antes de codear — no asumirlas.
+Estado al 03/08/2026. Los pasos 0 a 3 están **hechos**. El siguiente es el 4 (Supabase).
+Cada paso lista las decisiones que **hay que preguntarle a Manuel** antes de codear —
+no asumirlas.
 
 ### Paso 0 — auditar el bot ✅ HECHO
 
@@ -427,27 +488,20 @@ general — **cualquier cosa anotada en `ambiguedad` implica confianza baja**.
 
 Si aparecen mensajes reales donde el parser falla, este es el lugar para volver.
 
-### Paso 3 — alta de ejercicios desde el bot (el siguiente)
+### Paso 3 — alta de ejercicios desde el bot ✅ HECHO
 
-Hoy `hip thrust` no se puede cargar de ninguna forma vía Telegram: el mensaje se
-confirma `parcial` y ese ejercicio queda afuera para siempre. Flujo propuesto: el bot
-detecta el sin-match y **pregunta** ("¿lo agrego como HIP THRUST, grupo PIERNA?"), y
-recién con el sí explícito lo crea. Mantiene la regla de no inventar, pero destraba
-el caso.
+Ver *Alta de ejercicios desde el bot* más arriba. La decisión que estaba pendiente
+la tomó Manuel: **el grupo muscular lo escribe él**, el modelo no lo propone. El bot
+pregunta "¿de qué grupo muscular es?" y con esa respuesta crea el ejercicio.
 
-**Buena noticia: la infraestructura ya está.** El watchdog de cierre usa exactamente
-el mismo mecanismo de preguntar y esperar respuesta, así que hay que generalizarlo:
+Se generalizó `Sesion.pregunta_cierre_en` en la tabla `preguntas_pendientes`, y al dar
+el alta se completan los mensajes de la bandeja que habían quedado sin match.
 
-- Hoy la pregunta pendiente vive en `Sesion.pregunta_cierre_en` — solo sirve para el
-  cierre. Hace falta algo más general (una pregunta pendiente con su contexto).
-- El parser ya tiene el tipo `respuesta` y recibe `pregunta_pendiente` en el prompt;
-  habría que pasarle **de qué** es la pregunta.
+Lo que se aprendió probándolo: Haiku **omitía** el ejercicio sin match cuando era el
+único del mensaje, y sin esa entrada el flujo entero no arranca. Lo arregló un ejemplo
+trabajado en el prompt; las reglas en prosa no alcanzaron.
 
-**Decisión a preguntar:** el grupo muscular. ¿Lo propone el modelo y Manuel confirma,
-o lo tiene que escribir él? Proponerlo es menos fricción pero puede meter un grupo
-inventado en el catálogo.
-
-### Paso 4 — Supabase (Fase 2)
+### Paso 4 — Supabase (Fase 2, el siguiente)
 
 El plan viejo, y ahora tiene una razón extra: con el bot en un servidor always-on los
 mensajes entrarían al instante en vez de esperar a que se prenda la PC. Hoy con polling

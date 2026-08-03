@@ -245,6 +245,28 @@
       border-color: var(--accent2);
     }
 
+    /* Pregunta que el bot dejó esperando respuesta en Telegram */
+    .tg-pregunta {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      line-height: 1.5;
+      color: var(--accent3);
+      border: 1px solid var(--accent3);
+      padding: 8px 10px;
+      margin-bottom: 14px;
+      white-space: pre-line;
+    }
+
+    .tg-pregunta-titulo {
+      display: block;
+      letter-spacing: 1px;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    /* Ejercicio de un mensaje que ya se escribió en la base */
+    .tg-ej-hecho { color: var(--muted); }
+
     /* Mensajes ya resueltos: se atenúan para que resalten los pendientes */
     .tg-msg.resuelto { opacity: 0.45; }
     .tg-msg.control { border-left-color: var(--accent2); }
@@ -1832,6 +1854,7 @@
           <span class="tg-status" id="tg-status">···</span>
         </div>
         <div class="tg-sesion" id="tg-sesion">SIN SESIÓN ABIERTA</div>
+        <div class="tg-pregunta" id="tg-pregunta" style="display:none;"></div>
         <div id="tg-inbox-list"></div>
       </div>
 
@@ -2184,9 +2207,14 @@
           ? `${e.series.length} series @ ${pesos[0]}kg — ${e.series.map(s => s.reps).join(', ')} reps`
           : `${e.series.length} series — ${e.series.map(s => `${s.reps}x${s.peso_kg}kg`).join(', ')}`;
         const vol = e.series.reduce((a, s) => a + s.reps * s.peso_kg, 0);
-        const nombre = e.ejercicio_id
-          ? `<span class="tg-ej-nombre">${tgEscape(e.nombre_catalogo)}</span>`
-          : `<span class="tg-ej-sinmatch">?? ${tgEscape(e.alias_detectado)}</span>`;
+        // Un mensaje se puede confirmar más de una vez: si le diste de alta un
+        // ejercicio que faltaba, vuelve a estar pendiente. Los que ya se
+        // escribieron van marcados para saber qué falta.
+        const nombre = e.confirmado
+          ? `<span class="tg-ej-hecho">✓ ${tgEscape(e.nombre_catalogo)}</span>`
+          : (e.ejercicio_id
+            ? `<span class="tg-ej-nombre">${tgEscape(e.nombre_catalogo)}</span>`
+            : `<span class="tg-ej-sinmatch">?? ${tgEscape(e.alias_detectado)}</span>`);
         return `<div class="tg-ej">${nombre}
           <span class="tg-ej-detalle">${tgEscape(detalle)} · ${vol.toLocaleString()} kg</span></div>`;
       }).join('');
@@ -2201,7 +2229,8 @@
       let pie = '';
       if (pendiente) {
         const nota = sinMatch
-          ? `<div class="tg-aviso">${sinMatch} sin match: se confirman solo los reconocidos.</div>`
+          ? `<div class="tg-aviso">${sinMatch} sin match: se confirman solo los reconocidos.
+             Contestale al bot el grupo muscular y los agrega.</div>`
           : '';
         pie = `${nota}<div class="tg-acciones">
           <button class="tg-btn" onclick="tgConfirmar(${m.id}, this)">CONFIRMAR</button>
@@ -2280,6 +2309,21 @@
           } else {
             cajaSesion.textContent = 'SIN SESIÓN ABIERTA — mandá "inicio: Push" al bot';
             cajaSesion.className = 'tg-sesion';
+          }
+        }
+
+        // Lo que el bot está esperando que contestes por Telegram. Se contesta
+        // desde el chat, no desde acá: esto es para no quedar esperando algo
+        // que no viste.
+        const cajaPregunta = document.getElementById('tg-pregunta');
+        if (cajaPregunta) {
+          const q = json.pregunta_pendiente;
+          if (q) {
+            cajaPregunta.innerHTML =
+              `<span class="tg-pregunta-titulo">EL BOT TE PREGUNTÓ</span>${tgEscape(q.pregunta)}`;
+            cajaPregunta.style.display = '';
+          } else {
+            cajaPregunta.style.display = 'none';
           }
         }
 

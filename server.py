@@ -496,11 +496,15 @@ def api_mensajes():
             .all()
         )
         abierta = models.sesion_abierta(session)
+        # Lo que el bot está esperando que contestes por Telegram (el grupo
+        # muscular de un ejercicio nuevo, o si cerramos la sesión)
+        pendiente = models.pregunta_pendiente_actual(session)
         return jsonify({
             "ok": True,
             "data": [m.to_dict() for m in mensajes],
             "bot_activo": TELEGRAM_AVAILABLE and telegram_bot.esta_configurado(),
             "sesion_abierta": abierta.to_dict() if abierta else None,
+            "pregunta_pendiente": pendiente.to_dict() if pendiente else None,
         })
     except Exception as e:
         # Sin bandeja el dashboard tiene que seguir andando

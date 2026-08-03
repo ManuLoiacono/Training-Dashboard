@@ -66,6 +66,9 @@ class MensajeParse(BaseModel):
     fecha: Optional[str]
     # Solo en tipo=respuesta: "si" | "no"
     respuesta: Optional[str]
+    # Solo en tipo=respuesta, cuando la pregunta pide un dato y no un sí/no:
+    # el dato tal cual (por ahora, el grupo muscular de un ejercicio nuevo).
+    respuesta_texto: Optional[str]
     # "alta" solo si todos los ejercicios matchearon y los números son claros
     confianza: str
     # Qué no entendió, o None si entendió todo
@@ -98,10 +101,15 @@ PRIMERO: CLASIFICAR EL MENSAJE en `tipo`
 
   "series"     Carga de ejercicios. Es el caso más común.
 
-  "respuesta"  Contesta una pregunta que hizo el bot: "sí", "dale", "no", "todavía no".
-               Poné `respuesta`: "si" o "no". Usá este tipo SOLO si arriba dice
-               que hay una pregunta pendiente. Si no hay pregunta pendiente,
-               un "sí" suelto es tipo "otro".
+  "respuesta"  Contesta la pregunta que hizo el bot. Usá este tipo SOLO si en el
+               CONTEXTO de arriba dice que hay una pregunta pendiente; si no la
+               hay, un "sí" suelto es tipo "otro".
+               Poné `respuesta`: "si" o "no" según acepte o rechace.
+               Si la pregunta pide un DATO (por ejemplo el grupo muscular de un
+               ejercicio nuevo), poné ese dato en `respuesta_texto`, en una o dos
+               palabras y sin la frase alrededor: de "es de pierna" sale
+               `respuesta_texto: "PIERNA"`. Si además dice que no lo agregue
+               ("dejalo", "no", "olvidate"), poné `respuesta`: "no".
 
   "otro"       No encaja en ninguno (saludos, preguntas, cualquier otra cosa).
 
@@ -116,6 +124,27 @@ REGLAS DE LAS SERIES  (aplican cuando hay ejercicios en el mensaje)
 2. NUNCA inventes un ejercicio. Si no matchea con confianza razonable,
    poné `ejercicio_id: null`, `nombre_catalogo: null`, describilo en `ambiguedad`
    y marcá `confianza: "baja"`. Es preferible preguntar a adivinar.
+
+   PERO NUNCA LO OMITAS DE LA LISTA. Un ejercicio que no está en el catálogo
+   se devuelve igual, con su `alias_detectado` tal cual lo escribió Manuel y
+   todas sus series, solo que con `ejercicio_id: null`. Con esa entrada el bot
+   le pregunta de qué grupo muscular es y lo da de alta; si lo dejás afuera,
+   el ejercicio y sus series se pierden sin que nadie se entere.
+
+   Esto vale aunque el mensaje traiga UN SOLO ejercicio y no matchee ninguno.
+   Ejemplo, con "hip thrust" fuera del catálogo:
+
+     mensaje       "hip thrust 80 3x10"
+     ejercicios    un (1) elemento:
+                     alias_detectado  "hip thrust"
+                     ejercicio_id     null
+                     nombre_catalogo  null
+                     series           3 series de 10 reps con peso_kg 80
+     confianza     "baja"
+     ambiguedad    "hip thrust no está en el catálogo"
+
+   Contestar una lista vacía a ese mensaje es un ERROR: el mensaje SÍ trae
+   un ejercicio, lo que falta es el match.
 
 3. Los alias son libres: abreviaturas, español, inglés, con o sin tildes.
    Ejemplos: "BP"/"bench"/"banca"/"press banca" -> PB.
@@ -140,8 +169,10 @@ REGLAS DE LAS SERIES  (aplican cuando hay ejercicios en el mensaje)
 7. Peso siempre en kg. Si no hay peso y no es un ejercicio de peso corporal,
    poné 0 y mencionalo en `ambiguedad`.
 
-8. Si el mensaje no trae ejercicios (un "fin sesión" pelado, un saludo),
-   devolvé `ejercicios: []`. No inventes series que no están.
+8. `ejercicios: []` es SOLO para los mensajes que no mencionan ningún ejercicio
+   (un "fin sesión" pelado, un saludo). Que un ejercicio no esté en el catálogo
+   no es motivo para devolver la lista vacía: va con `ejercicio_id: null`.
+   No inventes series que no están.
 
 CATÁLOGO DE EJERCICIOS DISPONIBLES
 {catalogo}
@@ -163,10 +194,13 @@ def _catalogo_texto(session) -> str:
 # Parseo
 # ─────────────────────────────────────────────
 
-def _contexto_texto(sesion_abierta=None, pregunta_pendiente=False) -> str:
+def _contexto_texto(sesion_abierta=None, pregunta_pendiente=None) -> str:
     """
     Estado del bot, para que el modelo pueda distinguir un "sí" que contesta
     una pregunta de un "sí" suelto, y sepa si ya hay una sesión andando.
+
+    `pregunta_pendiente` es un PreguntaPendiente (o None). Importa de qué es:
+    un "pierna" contesta el alta de un ejercicio, no el cierre de la sesión.
     """
     lineas = []
     if sesion_abierta is not None:
@@ -177,14 +211,22 @@ def _contexto_texto(sesion_abierta=None, pregunta_pendiente=False) -> str:
     else:
         lineas.append("  No hay ninguna sesión abierta en este momento.")
 
-    if pregunta_pendiente:
+    tipo_pregunta = getattr(pregunta_pendiente, "tipo", None)
+    if tipo_pregunta == "alta_ejercicio":
+        alias = pregunta_pendiente.contexto().get("alias", "")
+        lineas.append(
+            f"  El bot preguntó de qué GRUPO MUSCULAR es el ejercicio nuevo "
+            f"\"{alias}\" y está esperando la respuesta. Un mensaje con el nombre "
+            f"de un grupo (pierna, pecho, espalda...) contesta esa pregunta."
+        )
+    elif tipo_pregunta:
         lineas.append("  El bot preguntó si cerramos la sesión y está esperando respuesta.")
     else:
         lineas.append("  No hay ninguna pregunta pendiente del bot.")
     return "\n".join(lineas)
 
 
-def parsear(texto: str, sesion_abierta=None, pregunta_pendiente: bool = False) -> MensajeParse:
+def parsear(texto: str, sesion_abierta=None, pregunta_pendiente=None) -> MensajeParse:
     """
     Manda el mensaje a Claude y devuelve el parse validado contra el esquema.
     Lanza excepción si la API falla; el llamador decide qué hacer.
