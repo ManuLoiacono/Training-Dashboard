@@ -1,6 +1,6 @@
 """
-MANU///LOGS — servidor local
-Corre con: python server1.py
+MANU///LOGS — servidor
+Corre con: python server.py
 Abre en el browser: http://localhost:5000
 """
 
@@ -999,8 +999,19 @@ DEBUG = True
 
 if __name__ == "__main__":
     print("\n" + "="*50)
-    print("  MANU///LOGS - servidor local")
+    print("  MANU///LOGS - servidor")
     print("="*50)
+
+    # Con dos backends posibles, lo primero que hay que saber es en cual
+    # estas escribiendo. Nunca imprimir la URL entera: lleva la password.
+    if models.ES_POSTGRES:
+        host = models.DATABASE_URL.split("@")[-1].split("/")[0]
+        print(f"  Base: Postgres @ {host}")
+    else:
+        print(f"  Base: SQLite ({os.path.basename(models.DATABASE_URL)})")
+    if not models.DB_LISTA:
+        print(f"        [X] NO CONECTA: {models.DB_ERROR}")
+
     print(f"  Sheet ID: {SPREADSHEET_ID}")
     print(f"  Credenciales: {CREDENTIALS_FILE}")
 

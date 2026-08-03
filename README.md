@@ -25,6 +25,7 @@ Abrí **http://localhost:5000**.
 El banner de arranque te dice el estado de cada fuente:
 
 ```
+  Base: SQLite (manu_logs.db)
   Garmin Connect: [OK] CONFIGURADO
   PDFs antropometria: 2 encontrados
   Telegram: [OK] bot escuchando
@@ -41,21 +42,29 @@ un estado vacío en vez de romperse.
 ### 1. Dependencias
 
 ```bash
-pip install flask flask-cors python-dotenv sqlalchemy garminconnect pdfplumber
-pip install anthropic requests
-pip install google-api-python-client google-auth google-auth-oauthlib google-auth-httplib2
+pip install -r requirements.txt
 ```
 
-Si el server no arranca con `ModuleNotFoundError`, corré el primer renglón de nuevo:
-`python-dotenv`, `sqlalchemy` y `anthropic` son los que suelen faltar.
-
-Los últimos dos renglones (Google) solo hacen falta si vas a usar el fallback a Google
-Sheets — ver la sección *Google Sheets* al final.
+Las versiones están fijas a las que andan probadas. Las de Google solo hacen falta si
+vas a usar el fallback a Google Sheets — ver esa sección al final.
 
 ### 2. Base de datos
 
 No hay que hacer nada. `models.py` crea `manu_logs.db` y sus tablas automáticamente la
 primera vez que arranca el server.
+
+Si en vez de SQLite querés usar **Postgres (Supabase)**, pegá la connection string en el
+`.env` como `DATABASE_URL` — tal cual te la da Supabase, sin editarle el prefijo — y
+migrá los datos que ya tenías:
+
+```bash
+python migrate_postgres.py --dry-run   # cuenta filas, no escribe nada
+python migrate_postgres.py
+```
+
+No borra la base local: queda de backup, y para volver atrás alcanza con dejar
+`DATABASE_URL` apuntando a sqlite otra vez. El banner de arranque te dice siempre en
+cuál de las dos estás escribiendo.
 
 ### 3. Garmin Connect (running + sueño)
 
@@ -242,6 +251,8 @@ garmin_client.py    Cliente de Garmin Connect
 garmin_setup.py     Auth de Garmin (correr una vez)
 antro_parser.py     Parser de PDFs ISAK
 migrate_sheets.py   Script one-shot de migración Sheets → SQLite (ya ejecutado)
+migrate_postgres.py Migración SQLite → Postgres/Supabase
+requirements.txt    Dependencias con versiones fijas
 manu_logs.db        Base de datos (no se commitea)
 pdfs/               Informes antropométricos (no se commitean)
 ```

@@ -7,6 +7,7 @@ Auto-init al importar si el .db no existe.
 import os
 from datetime import datetime, timedelta
 
+from dotenv import load_dotenv
 from sqlalchemy import (
     Column, Integer, Text, Float, Date, DateTime,
     ForeignKey, create_engine, event, inspect, text,
@@ -17,20 +18,62 @@ from sqlalchemy.orm import declarative_base, relationship, sessionmaker
 # Config
 # ─────────────────────────────────────────────
 
-DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///manu_logs.db")
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Para SQLite, resolver path relativo al directorio del proyecto
-if DATABASE_URL.startswith("sqlite:///") and not DATABASE_URL.startswith("sqlite:////"):
-    db_path = DATABASE_URL.replace("sqlite:///", "")
-    DATABASE_URL = f"sqlite:///{os.path.join(BASE_DIR, db_path)}"
+# models.py se importa desde scripts que no siempre cargaron el .env todavia.
+# Sin esto, DATABASE_URL cae al default de SQLite en silencio y terminas
+# escribiendo en la base equivocada sin que nada avise. Es idempotente.
+load_dotenv(os.path.join(BASE_DIR, ".env"))
 
-engine = create_engine(DATABASE_URL, echo=False)
 
-# Habilitar foreign keys en SQLite
-@event.listens_for(engine, "connect")
-def _set_sqlite_pragma(dbapi_conn, connection_record):
-    if DATABASE_URL.startswith("sqlite"):
+def _normalizar_database_url(url: str) -> str:
+    """
+    Deja la URL como la espera SQLAlchemy y resuelve los paths de SQLite.
+
+    Supabase te da la connection string arrancando en `postgresql://`, que
+    SQLAlchemy mapea al driver psycopg2 (no instalado). Se reescribe a
+    `postgresql+psycopg://` para usar psycopg 3, que es el que anda en 3.13.
+    """
+    if url.startswith("postgres://"):  # algunos hosts la dan asi
+        url = "postgresql://" + url[len("postgres://"):]
+    if url.startswith("postgresql://"):
+        url = "postgresql+psycopg://" + url[len("postgresql://"):]
+
+    # SQLite con path relativo: resolverlo contra el directorio del proyecto,
+    # no contra el cwd de quien lo haya arrancado
+    if url.startswith("sqlite:///") and not url.startswith("sqlite:////"):
+        db_path = url.replace("sqlite:///", "")
+        url = f"sqlite:///{os.path.join(BASE_DIR, db_path)}"
+    return url
+
+
+DATABASE_URL = _normalizar_database_url(
+    os.environ.get("DATABASE_URL", "sqlite:///manu_logs.db")
+)
+
+ES_SQLITE = DATABASE_URL.startswith("sqlite")
+ES_POSTGRES = DATABASE_URL.startswith("postgresql")
+
+# Postgres administrado corta las conexiones ociosas y la app se pasa horas
+# esperando un mensaje de Telegram: sin pre_ping, el primer request despues
+# de un rato revienta con "server closed the connection unexpectedly".
+_opciones = {"echo": False}
+if ES_POSTGRES:
+    _opciones["pool_pre_ping"] = True
+    _opciones["pool_recycle"] = 900
+    # El pooler de Supabase en modo transaction (puerto 6543) no soporta
+    # prepared statements, que es lo que psycopg 3 usa por defecto.
+    if ":6543" in DATABASE_URL:
+        _opciones["connect_args"] = {"prepare_threshold": None}
+
+engine = create_engine(DATABASE_URL, **_opciones)
+
+
+# Las foreign keys de SQLite vienen apagadas por defecto. En Postgres siempre
+# estan activas, asi que este listener solo aplica al caso local.
+if ES_SQLITE:
+    @event.listens_for(engine, "connect")
+    def _set_sqlite_pragma(dbapi_conn, connection_record):
         cursor = dbapi_conn.cursor()
         cursor.execute("PRAGMA foreign_keys=ON")
         cursor.close()
@@ -253,6 +296,7 @@ class MensajeParseado(Base):
 # solo crea tablas nuevas: no toca las existentes, asi que hay que agregarlas
 # a mano. Todas son nullable o traen DEFAULT, que es la unica forma de que
 # SQLite acepte un ADD COLUMN sin recrear la tabla.
+# Los tipos son sintaxis SQLite: esto solo corre contra SQLite (ver abajo).
 _COLUMNAS_NUEVAS = {
     "sesiones": [
         ("nombre", "TEXT"),
@@ -271,6 +315,12 @@ _COLUMNAS_NUEVAS = {
 
 def _migrar_columnas():
     """Agrega las columnas que falten. Idempotente: se corre en cada import."""
+    # Los tipos de arriba son de SQLite (DATETIME no existe en Postgres). No
+    # hace falta portarlos: una base Postgres nace de create_all(), que ya
+    # crea las tablas completas, asi que nunca hay columnas que agregar.
+    if not ES_SQLITE:
+        return
+
     inspector = inspect(engine)
     tablas = set(inspector.get_table_names())
 
@@ -286,9 +336,33 @@ def _migrar_columnas():
                 print(f"[DB] Columna agregada: {tabla}.{nombre}", flush=True)
 
 
+# Si la base no contesto al arrancar. El resto del codigo lo puede consultar
+# para explicar por que no hay datos, en vez de tirar el mismo stacktrace
+# en cada endpoint.
+DB_LISTA = False
+DB_ERROR = ""
+
+
 def init_db():
-    """Crea tablas si no existen y agrega columnas nuevas a las que ya estaban."""
-    Base.metadata.create_all(engine)
+    """
+    Crea tablas si no existen y agrega columnas nuevas a las que ya estaban.
+
+    NO lanza si la base no contesta. Con SQLite esto era impensado — el
+    archivo esta ahi o no esta — pero contra Postgres remoto una caida de
+    red al importar dejaba sin arrancar al server Y al bot. El dashboard
+    tiene que levantar igual y mostrar el problema, no morirse en el import.
+    """
+    global DB_LISTA, DB_ERROR
+    try:
+        Base.metadata.create_all(engine)
+        DB_LISTA = True
+        DB_ERROR = ""
+    except Exception as e:
+        DB_LISTA = False
+        DB_ERROR = f"{type(e).__name__}: {e}"
+        print(f"[DB] No pude conectar con la base: {DB_ERROR}", flush=True)
+        return
+
     try:
         _migrar_columnas()
     except Exception as e:

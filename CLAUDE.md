@@ -34,6 +34,8 @@ garmin_client.py    Wrapper de Garmin Connect (running + sueño) vía garth.
 garmin_setup.py     Auth de Garmin, se corre una sola vez. Tokens en ~/.garth/
 antro_parser.py     Parser de PDFs ISAK (composición corporal) con pdfplumber.
 migrate_sheets.py   Script one-shot: migró gimnasio de Google Sheets → SQLite. Ya usado.
+migrate_postgres.py Migra SQLite → Postgres (Supabase). Fase 2, ver el plan.
+requirements.txt    Dependencias con versiones fijas. Hace falta para deployar.
 telegram_bot.py     Bot de Telegram: long polling, whitelist, deja mensajes en la bandeja.
 message_parser.py   Convierte texto libre en series estructuradas usando Claude.
 manu_logs.db        SQLite (gitignored).
@@ -92,6 +94,32 @@ escritas antes de este cambio quedaron en UTC: son 3 horas más que la realidad.
 nuevas se agregan en `_migrar_columnas()` (`models.py`), que corre en cada
 import y es idempotente. Todas tienen que ser nullable o traer `DEFAULT` —
 es la única forma de que SQLite acepte un `ADD COLUMN` sin recrear la tabla.
+**Solo corre contra SQLite**: los tipos son sintaxis SQLite (`DATETIME` no
+existe en Postgres) y una base Postgres nace completa de `create_all()`.
+
+### Dos backends: SQLite y Postgres
+
+`models.py` funciona con los dos y lo decide `DATABASE_URL`. Los flags
+`ES_SQLITE` / `ES_POSTGRES` están expuestos para el resto del código.
+
+- **La URL se normaliza sola** (`_normalizar_database_url`). Supabase te da
+  `postgresql://`, que SQLAlchemy mapea a psycopg2 (no instalado); se reescribe
+  a `postgresql+psycopg://` para psycopg 3, el que tiene wheels para 3.13.
+  Así la connection string se pega tal cual, sin editarla.
+- **`pool_pre_ping` y `pool_recycle`** en Postgres. La app se pasa horas
+  esperando un mensaje de Telegram, y un Postgres administrado corta las
+  conexiones ociosas: sin pre_ping el primer request después revienta.
+- **Puerto 6543** (pooler de Supabase en modo transaction) apaga los prepared
+  statements, que psycopg 3 usa por defecto y ese pooler no soporta.
+- **`models.py` carga el `.env` él mismo.** Se importa desde scripts que no
+  siempre lo cargaron, y sin eso `DATABASE_URL` caía al default de SQLite en
+  silencio — escribiendo en la base equivocada sin que nada avisara.
+
+> ⚠️ **`init_db()` no lanza si la base no contesta**, deja `DB_LISTA=False` y
+> `DB_ERROR`. Con SQLite esto era impensado (el archivo está o no está), pero
+> `init_db()` corre **al importar `models`**: contra Postgres remoto, una caída
+> de red dejaba sin arrancar al server **y** al bot. El banner muestra el
+> backend y, si no conecta, el error.
 
 **`dia_rutina` es opcional a propósito.** Manuel no siempre respeta la rotación 1-2-3, y
 un día mal etiquetado es peor que ninguno. Sin valor, la sesión no entra en el gráfico de
@@ -501,18 +529,56 @@ Lo que se aprendió probándolo: Haiku **omitía** el ejercicio sin match cuando
 único del mensaje, y sin esa entrada el flujo entero no arranca. Lo arregló un ejemplo
 trabajado en el prompt; las reglas en prosa no alcanzaron.
 
-### Paso 4 — Supabase (Fase 2, el siguiente)
+### Paso 4 — Supabase + host always-on (EN CURSO)
 
-El plan viejo, y ahora tiene una razón extra: con el bot en un servidor always-on los
-mensajes entrarían al instante en vez de esperar a que se prenda la PC. Hoy con polling
-llegan cuando arranca `server.py` (Telegram los guarda ~24hs, no se pierde nada).
-Por esto es la regla 4 — SQLAlchemy core, nada de Flask-SQLAlchemy.
+Manuel eligió el camino completo: **Supabase para la base y un host en la nube**
+(~5 USD/mes, Railway Hobby) para el proceso. Va **en dos etapas**, a propósito: son
+riesgos independientes y mezclarlos hace imposible saber qué se rompió.
+
+**Supabase es solo la base — no corre el código.** El bot es la única pieza que
+realmente necesita estar prendida siempre; la API solo cuando abrís el dashboard.
+Verificado el 03/08/2026: Fly.io ya no tiene free tier, el free de Render duerme a
+los 15 min (el cold start de ~1 min choca con usar el dashboard en el gimnasio), y
+el free de Supabase alcanza de sobra (500 MB; pausa recién tras una semana sin
+requests, que con el bot andando no pasa).
+
+#### Paso 4a — la base (código listo, falta correrlo)
+
+Hecho: `models.py` portable a Postgres, `requirements.txt`, `migrate_postgres.py`,
+`.env.example` documentado, backend en el banner. Ver *Dos backends* más arriba.
+
+**Falta**, y depende de Manuel: crear el proyecto en Supabase y poner la connection
+string en el `.env` como `DATABASE_URL`. Recién ahí se corre:
+
+```bash
+python migrate_postgres.py --dry-run   # cuenta filas, no escribe
+python migrate_postgres.py
+```
+
+> ⚠️ **Las secuencias.** Insertar con `id` explícito **no** mueve el contador de
+> Postgres, así que el primer INSERT nuevo choca con `duplicate key`. El script
+> corre `setval()` por tabla al final. Todos los `id` son `SERIAL` (verificado
+> compilando el DDL contra el dialecto de Postgres).
+
+La base local **no se borra**: queda de backup y alcanza con volver `DATABASE_URL`
+a sqlite para retroceder.
+
+#### Paso 4b — el host (después de 4a)
+
+Mover el proceso a Railway con la base ya remota. Lo que hay que resolver:
+
+- **Tokens de Garmin.** Viven en `~/.garth/` y `garmin_setup.py` es interactivo:
+  no hay consola en el host para re-autenticarse cuando expiren.
+- **Los PDFs** son archivos locales en `pdfs/`. O van a Supabase Storage, o se
+  suben desde el dashboard.
+- **Autenticación.** Hoy la seguridad es "está en localhost". Con URL pública, los
+  datos de composición corporal y sueño quedan expuestos: necesita login.
+- **Long polling → webhook.** Con URL pública conviene, y desaparece el footgun del
+  reloader — pero aparece el mismo 409 si quedan dos instancias del bot.
+- **Un WSGI de verdad** (gunicorn); el server de Flask es de desarrollo.
 
 ### Deuda conocida (no urgente)
 
-- **No hay `requirements.txt`.** Las dependencias están listadas en el README pero sin
-  fijar versiones. Ya mordió: en el arranque del 02/08 faltaban `python-dotenv`,
-  `sqlalchemy` y `anthropic`, y el server no levantaba.
 - **`/api/ejercicio/<nombre>` es un duplicado legacy** de `/api/gym/ejercicio/<nombre>`.
   El frontend usa el segundo. Se puede borrar el primero.
 - **Las fechas del 21/03/2026** siguen sin verificar (ver sección de arriba).
